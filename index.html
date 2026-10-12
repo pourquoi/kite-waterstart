@@ -1,0 +1,840 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Waterstart Kitesurf</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one-screen app, 3D stage left (HUD + transport over it), step guide right; stacks on phones */
+:root {
+  --bg: #e8f0ef;
+  --panel: #f6faf9;
+  --ink: #10262e;
+  --muted: #4b646c;
+  --line: #c6d6d4;
+  --accent: #c8246a;
+  --accent-ink: #ffffff;
+  --sea: #2b7584;
+  --sky: #cfe2e5;
+  --wind: #ffffff;
+  --power: #e0503a;
+  --mid: #e39b2e;
+  --edge: #2f9a72;
+  --chip: #dde9e7;
+  --font-display: "Bricolage Grotesque", "Avenir Next Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a181d; --panel: #0f222a; --ink: #e2eeed; --muted: #8ea8ae; --line: #1f3b45;
+    --accent: #ff5a9b; --accent-ink: #1a0610; --sea: #10404b; --sky: #0c2730; --wind: #bfe3ea;
+    --power: #ff6a50; --mid: #f0b048; --edge: #46c08f; --chip: #163039;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a181d; --panel: #0f222a; --ink: #e2eeed; --muted: #8ea8ae; --line: #1f3b45;
+  --accent: #ff5a9b; --accent-ink: #1a0610; --sea: #10404b; --sky: #0c2730; --wind: #bfe3ea;
+  --power: #ff6a50; --mid: #f0b048; --edge: #46c08f; --chip: #163039;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.app { height: 100%; display: grid; grid-template-rows: auto 1fr; }
+header.top {
+  display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+  padding: 12px 16px; border-bottom: 1px solid var(--line);
+}
+header.top h1 { font-family: var(--font-display); font-weight: 800; font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+header.top p { margin: 0; color: var(--muted); font-size: 14px; }
+.dirswitch { margin-left: auto; display: flex; gap: 0; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.dirswitch button { border: 0; background: transparent; color: var(--ink); font: 700 13px var(--font-body); padding: 6px 14px; cursor: pointer; }
+.dirswitch button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+main { display: grid; grid-template-columns: minmax(0, 1fr) 400px; min-height: 0; }
+.stage { position: relative; min-height: 0; background: var(--sky); overflow: hidden; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.hud {
+  position: absolute; top: 12px; left: 12px; width: 220px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent); backdrop-filter: blur(6px);
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px;
+}
+.hud svg { width: 100%; height: auto; display: block; }
+.hud .row { display: flex; justify-content: space-between; font-size: 13px; gap: 8px; }
+.hud .row b { font-family: var(--font-data); font-weight: 700; font-variant-numeric: tabular-nums; }
+.label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.gauge { height: 8px; border-radius: 4px; background: var(--chip); overflow: hidden; }
+.gauge i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--edge), var(--mid), var(--power)); }
+.hand { font-family: var(--font-data); font-size: 13px; font-weight: 700; }
+.hand.on { color: var(--accent); }
+.cams { position: absolute; top: 12px; right: 12px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.cams button, .toggle {
+  background: color-mix(in srgb, var(--panel) 88%, transparent); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: 700 12px var(--font-body); cursor: pointer;
+}
+.cams button[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.toggle { display: flex; gap: 6px; align-items: center; font-weight: 400; }
+.transport {
+  position: absolute; left: 12px; right: 12px; bottom: 12px;
+  background: color-mix(in srgb, var(--panel) 90%, transparent); backdrop-filter: blur(6px);
+  border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center;
+}
+.btns { display: flex; gap: 6px; }
+.btns button {
+  width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line);
+  background: var(--panel); color: var(--ink); cursor: pointer; display: grid; place-items: center;
+}
+.btns button.play { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btns svg { width: 16px; height: 16px; fill: currentColor; }
+.track { position: relative; min-width: 0; }
+.segs { display: flex; gap: 2px; margin-bottom: 4px; }
+.segs button {
+  flex: var(--w) 1 0; min-width: 0; border: 0; background: transparent; color: var(--muted);
+  font: 700 11px var(--font-body); text-align: left; padding: 0 2px; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-top: 3px solid var(--line); padding-top: 3px;
+}
+.segs button.cur { color: var(--ink); border-top-color: var(--accent); }
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
+select { font: 700 12px var(--font-data); background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 4px; }
+.panel { overflow-y: auto; border-left: 1px solid var(--line); background: var(--panel); min-width: 0; }
+.panel-inner { padding: 18px 16px 28px; display: grid; gap: 18px; }
+.stepnum { font-family: var(--font-data); font-size: 12px; color: var(--accent); font-weight: 700; letter-spacing: 0.06em; }
+.panel h2 { font-family: var(--font-display); font-weight: 800; font-size: 30px; line-height: 1.05; margin: 2px 0 2px; text-wrap: balance; letter-spacing: -0.015em; }
+.panel .sub { color: var(--muted); margin: 0; }
+.cards { display: grid; gap: 12px; }
+.card { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: start; }
+.card .ic { width: 30px; height: 30px; border-radius: 8px; background: var(--chip); display: grid; place-items: center; }
+.card .ic svg { width: 18px; height: 18px; stroke: var(--ink); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.card p { margin: 2px 0 0; }
+.card.warn .ic { background: color-mix(in srgb, var(--power) 22%, var(--panel)); }
+.card.warn .ic svg { stroke: var(--power); }
+.card.warn p { color: var(--ink); }
+hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
+.panel h3 { font-family: var(--font-display); font-size: 18px; margin: 0 0 6px; font-weight: 700; }
+.panel .note { margin: 0; color: var(--muted); font-size: 14px; }
+.zones { display: grid; gap: 8px; margin-top: 10px; }
+.zone { display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 10px; font-size: 14px; }
+.zone i { width: 14px; height: 14px; border-radius: 3px; margin-top: 3px; }
+.steplist { display: grid; gap: 4px; counter-reset: s; }
+.steplist button {
+  display: grid; grid-template-columns: 26px minmax(0,1fr); gap: 8px; align-items: baseline; text-align: left;
+  background: transparent; border: 0; border-radius: 6px; padding: 6px 8px; color: var(--ink); cursor: pointer; font: 15px var(--font-body);
+}
+.steplist button span:first-child { font-family: var(--font-data); font-size: 12px; color: var(--muted); }
+.steplist button.cur { background: var(--chip); font-weight: 700; }
+.steplist button.cur span:first-child { color: var(--accent); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 860px) {
+  .app { height: auto; display: block; }
+  main { display: block; }
+  .stage { height: 68svh; min-height: 420px; }
+  .panel { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
+  .hud { width: 170px; padding: 8px 10px; gap: 6px; }
+  .hud .row { font-size: 12px; }
+  .transport { grid-template-columns: auto minmax(0, 1fr); }
+  .transport .speed { display: none; }
+  .segs button { font-size: 0; }
+}
+</style>
+
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>Waterstart</h1>
+    <p>Où mettre le kite, comment placer ton corps, étape par étape.</p>
+    <div class="dirswitch" role="group" aria-label="Direction de navigation">
+      <button id="dirL" aria-pressed="false">← Partir à gauche</button>
+      <button id="dirR" aria-pressed="true">Partir à droite →</button>
+    </div>
+  </header>
+  <main>
+    <section class="stage" id="stage" aria-label="Vue 3D du waterstart">
+      <canvas id="c"></canvas>
+      <div class="hud" aria-live="polite">
+        <div class="label">Position du kite (vue de dos)</div>
+        <svg id="clock" viewBox="0 0 200 116" role="img" aria-label="Horloge de la fenêtre de vent"></svg>
+        <div class="row"><span>Horloge</span><b id="hClock">12h</b></div>
+        <div class="row"><span>Hauteur</span><b id="hElev">80°</b></div>
+        <div>
+          <div class="row"><span>Traction</span><b id="hPowTxt">faible</b></div>
+          <div class="gauge"><i id="hPow"></i></div>
+        </div>
+        <div class="row"><span>Main qui tire</span><span class="hand" id="hHand">aucune</span></div>
+      </div>
+      <div class="cams">
+        <button data-cam="dos" aria-pressed="true">Vue de dos</button>
+        <button data-cam="profil" aria-pressed="false">Profil (posture)</button>
+        <button data-cam="fenetre" aria-pressed="false">Toute la fenêtre</button>
+        <label class="toggle"><input type="checkbox" id="showWin" checked> Fenêtre de vent</label>
+        <label class="toggle"><input type="checkbox" id="loopStep"> Boucler l'étape</label>
+      </div>
+      <div class="transport">
+        <div class="btns">
+          <button id="prev" aria-label="Étape précédente"><svg viewBox="0 0 16 16"><path d="M3 2h2v12H3zM14 2v12L6 8z"/></svg></button>
+          <button id="play" class="play" aria-label="Lecture / pause"><svg viewBox="0 0 16 16" id="playIcon"><path d="M4 2l10 6-10 6z"/></svg></button>
+          <button id="next" aria-label="Étape suivante"><svg viewBox="0 0 16 16"><path d="M11 2h2v12h-2zM2 2v12l8-6z"/></svg></button>
+        </div>
+        <div class="track">
+          <div class="segs" id="segs"></div>
+          <input type="range" id="scrub" min="0" max="21" step="0.01" value="0" aria-label="Chronologie">
+        </div>
+        <select id="speed" class="speed" aria-label="Vitesse">
+          <option value="0.5">×0.5</option>
+          <option value="1" selected>×1</option>
+        </select>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div class="panel-inner">
+        <div>
+          <div class="stepnum" id="stepNum">ÉTAPE 1 / 6</div>
+          <h2 id="stepTitle">Préparation</h2>
+          <p class="sub" id="stepSub"></p>
+        </div>
+        <div class="cards">
+          <div class="card"><div class="ic"><svg viewBox="0 0 24 24"><path d="M3 9c4-5 14-5 18 0"/><path d="M3 9l9 12 9-12"/></svg></div>
+            <div><div class="label">Le kite</div><p id="tKite"></p></div></div>
+          <div class="card"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="2"/><path d="M12 7v7M8 22l4-8 4 8M6 11h12"/></svg></div>
+            <div><div class="label">Ton corps</div><p id="tBody"></p></div></div>
+          <div class="card"><div class="ic"><svg viewBox="0 0 24 24"><path d="M3 12h18"/><circle cx="12" cy="12" r="2"/><path d="M12 14v7"/></svg></div>
+            <div><div class="label">La barre</div><p id="tBar"></p></div></div>
+          <div class="card warn"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg></div>
+            <div><div class="label">Erreur fréquente</div><p id="tErr"></p></div></div>
+        </div>
+        <hr>
+        <div>
+          <h3>Les 6 étapes</h3>
+          <div class="steplist" id="stepList"></div>
+        </div>
+        <hr>
+        <div>
+          <h3>Lire la fenêtre de vent</h3>
+          <p class="note">On se repère comme sur une horloge, vu de dos avec le vent dans le dos : 12h au-dessus de ta tête, 9h et 3h au ras de l'eau sur les côtés. Le kite tire d'autant plus qu'il est au centre de la fenêtre et qu'il bouge vite.</p>
+          <div class="zones">
+            <div class="zone"><i style="background: var(--power)"></i><span><b>Zone de puissance.</b> Face à toi, sous le vent, assez bas. Le kite y tire fort. On le traverse pour démarrer, on n'y reste pas.</span></div>
+            <div class="zone"><i style="background: var(--mid)"></i><span><b>Zone intermédiaire.</b> Là où on navigue, vers 10h ou 2h. Traction régulière.</span></div>
+            <div class="zone"><i style="background: var(--edge)"></i><span><b>Bord de la fenêtre.</b> De 9h à 3h en passant par 12h. Le kite y tire très peu : c'est la zone de repos.</span></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const V = THREE.Vector3;
+const D2R = Math.PI / 180;
+const R = 22;                       // line length (m)
+const ANCHOR = new V(0, 0.9, 0);    // where the lines converge (rider's harness, roughly)
+const WIND = new V(0, 0, 1);        // wind blows toward +Z; rider looks downwind
+const UP = new V(0, 1, 0);
+const TOTAL = 21;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------------- Content ---------------- */
+const STEPS = [
+  { t0: 0, t1: 3, name: 'Préparation', sub: 'Assis dans l\'eau, kite au zénith',
+    kite: 'Kite au zénith (12h), juste au-dessus de toi. Il est au bord de la fenêtre : il ne tire presque pas. Garde-le immobile avant de faire quoi que ce soit.',
+    body: 'Assis dans l\'eau, dos au vent, genoux pliés vers la poitrine. Pieds dans les straps, planche en travers du vent, posée sur sa tranche côté talons.',
+    bar: 'Bras tendus, barre choquée (loin de toi). Mains de part et d\'autre du centre, sans tirer d\'un côté.',
+    err: 'Chausser la planche alors que le kite bouge : il dérive et tu te fais traîner. Stabilise le kite à 12h d\'abord, chausse avec une seule main si besoin.' },
+  { t0: 3, t1: 5.5, name: 'Viser', sub: 'Planche et kite en position',
+    kite: 'Recule légèrement le kite vers {c11}, du côté opposé à ta direction. Ça lui donne plus de course pour le piqué.',
+    body: 'Tourne la planche : le nez pointe vers ta direction ({dir}), un peu sous le vent. Ton pied avant est côté {dir}. Reste compact, genoux pliés.',
+    bar: 'Petite traction main {back} pour amener le kite à {c11}, puis barre à plat.',
+    err: 'Planche pointée vers le vent : quand le kite tire, la planche ne peut pas glisser et tu passes par-dessus.' },
+  { t0: 5.5, t1: 8, name: 'Piquer', sub: 'Envoyer le kite dans la fenêtre',
+    kite: 'Fais plonger le kite franchement de {c11} vers {c2}. En traversant la zone de puissance il accélère, et c\'est cette vitesse qui crée la traction.',
+    body: 'Laisse la traction te soulever : épaules vers l\'avant, au-dessus de la planche, poids sur le pied avant. Le kite te tire sur la planche, tu ne te lèves pas toi-même.',
+    bar: 'Tire la main {front} d\'un geste net, puis borde un peu (barre vers toi).',
+    err: 'Piqué trop timide : pas de puissance, tu coules. Piqué trop long jusqu\'au ras de l\'eau : le kite t\'arrache vers l\'avant et peut tomber.' },
+  { t0: 8, t1: 11, name: 'Se lever', sub: 'Prendre de la vitesse',
+    kite: 'Dès que tu sens la traction, remets la barre à plat : le kite remonte vers {c130}–{c2}. Ne le laisse pas descendre sous {c230}.',
+    body: 'Jambes encore fléchies, déplie-les progressivement. Abats : pars un peu sous le vent pour que la planche accélère et commence à planer.',
+    bar: 'Barre à plat, mains au centre. Borde si ça manque de traction, choque si ça tire trop.',
+    err: 'Tendre les jambes d\'un coup ou se mettre debout trop tôt : la planche freine et tu tombes en arrière.' },
+  { t0: 11, t1: 15, name: 'Naviguer', sub: 'Tenir le cap',
+    kite: 'Kite stable vers {c2}, environ 30 à 45° au-dessus de l\'eau. Il tire régulièrement, sans te soulever.',
+    body: 'Épaules en arrière, bassin sous les épaules, poids sur les talons. Jambe avant plus tendue, jambe arrière fléchie. Regarde où tu vas, pas le kite.',
+    bar: 'Bras presque tendus. Tu doses la puissance en bordant ou en choquant la barre, pas en tirant avec les bras.',
+    err: 'Kite trop haut (entre 12h et {c1}) : peu de traction, tu ralentis et tu coules. Fixer le kite des yeux : tu perds ton cap.' },
+  { t0: 15, t1: 21, name: 'Vent faible', sub: 'Faire des S avec le kite',
+    kite: 'Si ça ne tire pas assez, fais des S entre {c1} et {c230}. Chaque descente fait accélérer le kite et redonne de la puissance.',
+    body: 'Abats légèrement pendant que le kite descend, remonte au vent quand il remonte. Garde ta vitesse.',
+    bar: 'Alterne main {front} (descente) et main {back} (montée), en souplesse.',
+    err: 'S trop amples ou trop bas : le kite touche l\'eau. Reste dans la moitié haute de la fenêtre.' },
+];
+
+let mirrored = false;
+const WORDS = {
+  right: { dir: 'droite', front: 'droite', back: 'gauche', c11: '11h', c2: '2h', c130: '1h30', c1: '1h', c230: '2h30' },
+  left:  { dir: 'gauche', front: 'gauche', back: 'droite', c11: '1h', c2: '10h', c130: '10h30', c1: '11h', c230: '9h30' },
+};
+const fill = s => s.replace(/\{(\w+)\}/g, (_, k) => WORDS[mirrored ? 'left' : 'right'][k] ?? k);
+
+/* ---------------- Timeline ---------------- */
+const smooth = x => x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x);
+// signed hours: 0 = 12h, + toward 3h (right as seen from behind), - toward 9h
+const KITE_KEYS = [
+  [0, 0, 6], [3, 0, 6], [4.6, -0.7, 6], [5.5, -0.7, 6], [7.4, 2.45, 30], [8.1, 2.45, 28],
+  [9.8, 1.9, 16], [11, 1.95, 12], [12, 2, 10], [15, 2, 10],
+];
+function kiteAt(t) {
+  if (t >= 15) {
+    const u = t - 15, s = Math.sin(2 * Math.PI * u / 3), ramp = smooth(u / 0.8) * (1 - smooth((u - 5.4) / 0.6));
+    return { h: 2 + (-0.25 + 0.75 * s) * ramp, d: 10 + ramp * (6 + 8 * s) };
+  }
+  for (let i = 0; i < KITE_KEYS.length - 1; i++) {
+    const a = KITE_KEYS[i], b = KITE_KEYS[i + 1];
+    if (t <= b[0]) { const k = smooth((t - a[0]) / (b[0] - a[0])); return { h: a[1] + (b[1] - a[1]) * k, d: a[2] + (b[2] - a[2]) * k }; }
+  }
+  const l = KITE_KEYS[KITE_KEYS.length - 1]; return { h: l[1], d: l[2] };
+}
+function kiteDir(h, d) {
+  const th = h * 30 * D2R, dd = d * D2R;
+  return new V(-Math.sin(th) * Math.cos(dd), Math.cos(th) * Math.cos(dd), Math.sin(dd)).normalize();
+}
+// Rider poses (rider faces +Z/downwind, travels toward -X; front foot at -X)
+const P = {
+  sit:   { hip: [0, -0.3, 0],    torso: 45, bpos: [0, 0.05, 0.62], yaw: 0,  roll: -72, pole: [0, 1, 0.25], sheet: 0 },
+  aim:   { hip: [0, -0.27, 0.03], torso: 40, bpos: [0, 0.05, 0.62], yaw: 22, roll: -68, pole: [0, 1, 0.3], sheet: 0.15 },
+  pull:  { hip: [0, 0.0, 0.38],  torso: -12, bpos: [0, 0.02, 0.66], yaw: 30, roll: -32, pole: [0, 0.7, 1], sheet: 0.65 },
+  rise:  { hip: [0, 0.45, 0.22], torso: -2, bpos: [0, 0.03, 0.38], yaw: 26, roll: -8, pole: [0, 0.3, 1], sheet: 0.7 },
+  stand: { hip: [0, 0.74, 0.05], torso: 12, bpos: [0, 0.03, 0.16], yaw: 10, roll: -12, pole: [0, 0.2, 1], sheet: 0.5 },
+  ride:  { hip: [0, 0.8, -0.12], torso: 22, bpos: [0, 0.03, 0.12], yaw: -4, roll: -18, pole: [0, 0.15, 1], sheet: 0.4 },
+};
+const POSE_KEYS = [[0, 'sit'], [3, 'sit'], [5.2, 'aim'], [6.4, 'aim'], [8, 'pull'], [9.4, 'rise'], [11, 'stand'], [12.5, 'ride'], [21, 'ride']];
+const lerp = (a, b, k) => a + (b - a) * k;
+function poseAt(t) {
+  let out;
+  for (let i = 0; i < POSE_KEYS.length - 1; i++) {
+    const [ta, na] = POSE_KEYS[i], [tb, nb] = POSE_KEYS[i + 1];
+    if (t <= tb) {
+      const a = P[na], b = P[nb], k = smooth((t - ta) / (tb - ta));
+      out = {}; for (const key in a) out[key] = Array.isArray(a[key]) ? a[key].map((v, j) => lerp(v, b[key][j], k)) : lerp(a[key], b[key], k);
+      break;
+    }
+  }
+  if (!out) out = structuredClone(P.ride);
+  if (t > 15) { // carve with the S: bear away on the dive, edge back up on the climb
+    const u = t - 15, s = Math.sin(2 * Math.PI * u / 3) * smooth(u / 0.8) * (1 - smooth((u - 5.4) / 0.6));
+    out.yaw += 10 * s; out.hip[1] -= 0.05 * s; out.torso -= 6 * s; out.roll += 6 * s;
+  }
+  return out;
+}
+const speedAt = t => smooth((t - 8.3) / 3.2);
+const stepIndexAt = t => { for (let i = STEPS.length - 1; i >= 0; i--) if (t >= STEPS[i].t0) return i; return 0; };
+
+/* ---------------- Scene ---------------- */
+const canvas = document.getElementById('c');
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xffffff, 40, 140);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 400);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI * 0.495;
+controls.minDistance = 2; controls.maxDistance = 60;
+
+scene.add(new THREE.HemisphereLight(0xeaf6ff, 0x2a5a66, 1.1));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+sun.position.set(-6, 14, -8);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4, near: 1, far: 40 });
+scene.add(sun);
+
+// Water
+const waterGeo = new THREE.PlaneGeometry(220, 220, 90, 90); waterGeo.rotateX(-Math.PI / 2);
+const waterBase = Float32Array.from(waterGeo.attributes.position.array);
+const waterMat = new THREE.MeshStandardMaterial({ color: 0x2b7584, roughness: 0.35, metalness: 0.05, transparent: true, opacity: 0.82 });
+const water = new THREE.Mesh(waterGeo, waterMat); water.receiveShadow = true; scene.add(water);
+
+// Mirror-able rig: everything that depends on travel direction
+const rig = new THREE.Group(); scene.add(rig);
+
+// Foam streaks (show board speed)
+const FOAM = 180;
+const foam = new THREE.InstancedMesh(new THREE.CircleGeometry(0.5, 10).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }), FOAM);
+const foamData = [...Array(FOAM)].map(() => ({ x: (Math.random() - 0.5) * 80, z: (Math.random() - 0.5) * 60, s: 0.3 + Math.random() * 0.9, r: Math.random() * 3 }));
+rig.add(foam);
+
+// Wind streaks
+const WN = 260;
+const windPos = new Float32Array(WN * 6);
+const windData = [...Array(WN)].map(() => ({ x: (Math.random() - 0.5) * 50, y: 0.5 + Math.random() * 20, z: -22 + Math.random() * 52, l: 0.8 + Math.random() * 1.2 }));
+const windGeo = new THREE.BufferGeometry(); windGeo.setAttribute('position', new THREE.BufferAttribute(windPos, 3));
+const windMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 });
+scene.add(new THREE.LineSegments(windGeo, windMat));
+
+// Wind window (quarter sphere downwind)
+const winGroup = new THREE.Group(); winGroup.position.copy(ANCHOR); scene.add(winGroup);
+const winUniforms = { uPow: { value: new THREE.Color() }, uMid: { value: new THREE.Color() }, uEdge: { value: new THREE.Color() } };
+const winMat = new THREE.ShaderMaterial({
+  uniforms: winUniforms, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+  vertexShader: `varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+  fragmentShader: `
+    uniform vec3 uPow; uniform vec3 uMid; uniform vec3 uEdge; varying vec3 vP;
+    void main(){
+      float c = clamp(vP.z, 0.0, 1.0);
+      vec3 col = mix(uEdge, uMid, smoothstep(0.2, 0.45, c));
+      col = mix(col, uPow, smoothstep(0.5, 0.75, c));
+      float hr = atan(-vP.x, vP.y) / 0.5235988;
+      float gh = 1.0 - smoothstep(0.0, 0.05, abs(fract(hr + 0.5) - 0.5));
+      float dep = asin(clamp(vP.z, -1.0, 1.0)) / 0.2617994;
+      float gd = 1.0 - smoothstep(0.0, 0.06, abs(fract(dep + 0.5) - 0.5));
+      float a = 0.13 + 0.12 * c + 0.22 * max(gh, gd);
+      gl_FragColor = vec4(col, a);
+    }`,
+});
+winGroup.add(new THREE.Mesh(new THREE.SphereGeometry(R, 72, 36, 0, Math.PI, 0, Math.PI / 2), winMat));
+// edge arc + clock labels
+const edgePts = []; for (let i = 0; i <= 64; i++) { const a = -Math.PI / 2 + Math.PI * i / 64; edgePts.push(new V(-Math.sin(a) * R, Math.cos(a) * R, 0)); }
+const edgeLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(edgePts), new THREE.LineBasicMaterial({ color: 0x2f9a72 }));
+winGroup.add(edgeLine);
+function makeLabel(text, { size = 46, bg = 'rgba(12,30,36,0.78)', fg = '#ffffff', scale = 1 } = {}) {
+  const c = document.createElement('canvas'), ctx = c.getContext('2d');
+  ctx.font = `700 ${size}px "Atkinson Hyperlegible", system-ui, sans-serif`;
+  const w = Math.ceil(ctx.measureText(text).width) + size, h = Math.ceil(size * 1.6);
+  c.width = w; c.height = h;
+  ctx.font = `700 ${size}px "Atkinson Hyperlegible", system-ui, sans-serif`;
+  ctx.fillStyle = bg; ctx.beginPath(); ctx.roundRect(0, 0, w, h, h / 2); ctx.fill();
+  ctx.fillStyle = fg; ctx.textBaseline = 'middle'; ctx.textAlign = 'center'; ctx.fillText(text, w / 2, h / 2 + 2);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+  s.scale.set(w / h * scale, scale, 1); s.renderOrder = 10; return s;
+}
+const clockLabels = [];
+[[-3, '9h'], [-2, '10h'], [-1, '11h'], [0, '12h'], [1, '1h'], [2, '2h'], [3, '3h']].forEach(([h, txt]) => {
+  const s = makeLabel(txt, { scale: 1.3 }); const d = kiteDir(h, 0); s.position.copy(d.multiplyScalar(R + 1.8)); if (Math.abs(h) === 3) s.position.y += 1;
+  winGroup.add(s); clockLabels.push(s);
+});
+const zoneLabels = [
+  [makeLabel('ZONE DE PUISSANCE', { bg: 'rgba(160,40,25,0.85)', scale: 1.4 }), kiteDir(0, 70).multiplyScalar(R * 0.98).add(new V(0, -3, 0))],
+  [makeLabel('BORD DE FENÊTRE', { bg: 'rgba(25,110,80,0.85)', scale: 1.2 }), kiteDir(-2.4, 4).multiplyScalar(R)],
+];
+zoneLabels.forEach(([s, p]) => { s.position.copy(p); winGroup.add(s); });
+
+/* ---------------- Rider ---------------- */
+const mats = {
+  suit: new THREE.MeshStandardMaterial({ color: 0x1c2a31, roughness: 0.7 }),
+  skin: new THREE.MeshStandardMaterial({ color: 0xd9a77f, roughness: 0.8 }),
+  harness: new THREE.MeshStandardMaterial({ color: 0xf0b232, roughness: 0.5 }),
+  helmet: new THREE.MeshStandardMaterial({ color: 0xf5f5f0, roughness: 0.4 }),
+  board: new THREE.MeshStandardMaterial({ color: 0xf4f1e8, roughness: 0.4 }),
+  boardBottom: new THREE.MeshStandardMaterial({ color: 0x15343d, roughness: 0.5 }),
+  strap: new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 }),
+  hand: new THREE.MeshStandardMaterial({ color: 0xd9a77f, roughness: 0.8 }),
+  handOn: new THREE.MeshStandardMaterial({ color: 0xc8246a, emissive: 0x5a0a2c, roughness: 0.5 }),
+};
+const rider = new THREE.Group(); rig.add(rider);
+const cyl = new THREE.CylinderGeometry(1, 1, 1, 14);
+const sph = new THREE.SphereGeometry(1, 16, 12);
+function mk(geo, mat, r) { const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.userData.r = r; rider.add(m); return m; }
+function place(m, a, b) {
+  const d = b.clone().sub(a), L = d.length();
+  m.position.copy(a).addScaledVector(d, 0.5);
+  m.quaternion.setFromUnitVectors(UP, d.normalize());
+  m.scale.set(m.userData.r, L, m.userData.r);
+}
+function ball(m, p) { m.position.copy(p); m.scale.setScalar(m.userData.r); }
+const parts = {
+  torso: mk(cyl, mats.suit, 0.15), pelvis: mk(sph, mats.suit, 0.155), chest: mk(sph, mats.suit, 0.16),
+  harness: mk(cyl, mats.harness, 0.17), hook: mk(sph, mats.strap, 0.04),
+  neck: mk(cyl, mats.skin, 0.05), head: mk(sph, mats.skin, 0.11), helmet: mk(sph, mats.helmet, 0.118),
+};
+for (const s of ['L', 'R']) {
+  Object.assign(parts, {
+    ['thigh' + s]: mk(cyl, mats.suit, 0.075), ['shin' + s]: mk(cyl, mats.suit, 0.058), ['knee' + s]: mk(sph, mats.suit, 0.07),
+    ['uarm' + s]: mk(cyl, mats.suit, 0.05), ['farm' + s]: mk(cyl, mats.suit, 0.042), ['elbow' + s]: mk(sph, mats.suit, 0.05),
+    ['shoulder' + s]: mk(sph, mats.suit, 0.065), ['hand' + s]: mk(sph, mats.hand, 0.05),
+  });
+}
+parts.helmet.scale.y = 0.6;
+
+// Board
+const board = new THREE.Group(); rig.add(board);
+{
+  const shp = new THREE.Shape(), Lh = 0.69, Wh = 0.21, rr = 0.12;
+  shp.moveTo(-Lh + rr, -Wh); shp.lineTo(Lh - rr, -Wh); shp.quadraticCurveTo(Lh, -Wh, Lh, -Wh + rr);
+  shp.lineTo(Lh, Wh - rr); shp.quadraticCurveTo(Lh, Wh, Lh - rr, Wh); shp.lineTo(-Lh + rr, Wh);
+  shp.quadraticCurveTo(-Lh, Wh, -Lh, Wh - rr); shp.lineTo(-Lh, -Wh + rr); shp.quadraticCurveTo(-Lh, -Wh, -Lh + rr, -Wh);
+  const g = new THREE.ExtrudeGeometry(shp, { depth: 0.025, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.012, bevelSegments: 2 });
+  g.rotateX(Math.PI / 2); g.translate(0, 0.0, 0);
+  const deck = new THREE.Mesh(g, [mats.board, mats.boardBottom]); deck.castShadow = true; board.add(deck);
+  const bottom = new THREE.Mesh(new THREE.PlaneGeometry(1.36, 0.4).rotateX(Math.PI / 2), mats.boardBottom); bottom.position.y = -0.03; board.add(bottom);
+  for (const x of [-0.26, 0.26]) {
+    const strap = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.16), mats.strap); strap.position.set(x, 0.05, 0.02); board.add(strap);
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.07, 0.27), mats.suit); foot.position.set(x, 0.04, 0.04); foot.castShadow = true; board.add(foot);
+  }
+}
+
+// Bar & lines
+const barMat = new THREE.MeshStandardMaterial({ color: 0x30383b, roughness: 0.5 });
+const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.52, 10), barMat); rig.add(bar);
+const barEndL = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.1, 10), new THREE.MeshStandardMaterial({ color: 0xd8342c })); rig.add(barEndL);
+const barEndR = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.1, 10), new THREE.MeshStandardMaterial({ color: 0x2c6fd8 })); rig.add(barEndR);
+const linePos = new Float32Array(4 * 2 * 3);
+const lineGeo = new THREE.BufferGeometry(); lineGeo.setAttribute('position', new THREE.BufferAttribute(linePos, 3));
+const lineMat = new THREE.LineBasicMaterial({ color: 0x223036 });
+rig.add(new THREE.LineSegments(lineGeo, lineMat));
+
+// Kite (local frame: +Z toward rider, span along X, leading edge toward +Y)
+const kite = new THREE.Group(); rig.add(kite);
+const kiteMat = new THREE.MeshStandardMaterial({ color: 0xc8246a, roughness: 0.6, side: THREE.DoubleSide });
+const kitePt = (u, v) => {
+  const a = u * 72 * D2R, rr = 4.6, c = 2.5 * (1 - 0.55 * u * u);
+  return new V(rr * Math.sin(a), c * (0.45 - v), rr * (1 - Math.cos(a)) - 0.35 * Math.sin(Math.PI * v) * (1 - 0.5 * u * u));
+};
+{
+  const NU = 40, NV = 8, pos = [], idx = [];
+  for (let i = 0; i <= NU; i++) for (let j = 0; j <= NV; j++) { const p = kitePt(-1 + 2 * i / NU, j / NV); pos.push(p.x, p.y, p.z); }
+  for (let i = 0; i < NU; i++) for (let j = 0; j < NV; j++) { const a = i * (NV + 1) + j, b = a + NV + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  const canopy = new THREE.Mesh(g, kiteMat); canopy.castShadow = true; kite.add(canopy);
+  const tubeMat = new THREE.MeshStandardMaterial({ color: 0x1b2328, roughness: 0.5 });
+  const le = new THREE.CatmullRomCurve3([...Array(21)].map((_, i) => kitePt(-1 + i / 10, 0).add(new V(0, 0.05, 0))));
+  kite.add(new THREE.Mesh(new THREE.TubeGeometry(le, 60, 0.14, 8), tubeMat));
+  for (const u of [-0.66, -0.33, 0, 0.33, 0.66]) {
+    const st = new THREE.CatmullRomCurve3([0, 0.25, 0.5, 0.75].map(v => kitePt(u, v)));
+    kite.add(new THREE.Mesh(new THREE.TubeGeometry(st, 10, 0.06, 6), tubeMat));
+  }
+}
+const KITE_ATTACH = { frontL: kitePt(-0.7, 0.05), frontR: kitePt(0.7, 0.05), backL: kitePt(-1, 0.85), backR: kitePt(1, 0.85) };
+const KITE_OFFSET = 1.6; // canopy centre sits a bit further than the line length so the tips land at ~R
+
+// Kite trail + planned path
+const TRAIL = 70;
+const trailGeo = new THREE.BufferGeometry(); trailGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TRAIL * 3), 3));
+const trailMat = new THREE.LineBasicMaterial({ color: 0xc8246a, transparent: true, opacity: 0.6 });
+const trail = new THREE.Line(trailGeo, trailMat); trail.frustumCulled = false; rig.add(trail);
+let trailPts = [];
+const pathMat = new THREE.LineDashedMaterial({ color: 0xc8246a, dashSize: 0.8, gapSize: 0.6, transparent: true, opacity: 0.85 });
+let pathLine = null;
+function buildPath(i) {
+  if (pathLine) { rig.remove(pathLine); pathLine.geometry.dispose(); }
+  const { t0, t1 } = STEPS[i], pts = [];
+  for (let k = 0; k <= 80; k++) { const t = t0 + (t1 - t0) * k / 80, s = kiteAt(t); pts.push(kiteDir(s.h, s.d).multiplyScalar(R).add(ANCHOR)); }
+  pathLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), pathMat); pathLine.computeLineDistances(); rig.add(pathLine);
+}
+
+/* ---------------- Per-frame solve ---------------- */
+function ik(a, c, l1, l2, pole) {
+  const ac = c.clone().sub(a), dir = ac.clone().normalize();
+  const d = Math.min(ac.length(), l1 + l2 - 1e-3);
+  const x = (l1 * l1 - l2 * l2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, l1 * l1 - x * x));
+  const p = pole.clone().sub(dir.clone().multiplyScalar(pole.dot(dir))).normalize();
+  return { joint: a.clone().addScaledVector(dir, x).addScaledVector(p, h), end: a.clone().addScaledVector(dir, d) };
+}
+const kiteUp = new V(0, 0, -1);
+let steer = 0;
+const basis = new THREE.Matrix4();
+function frameKite(pos, up, target) {
+  const z = target.clone().sub(pos).normalize();
+  const x = up.clone().cross(z).normalize(); const y = z.clone().cross(x);
+  basis.makeBasis(x, y, z); return { x, y, z, q: new THREE.Quaternion().setFromRotationMatrix(basis) };
+}
+function parkedUp(dir) { // leading edge faces upwind when the kite is not moving
+  const u = new V(0, 0, -1); u.addScaledVector(dir, -u.dot(dir));
+  return u.lengthSq() < 1e-4 ? new V(0, 1, 0) : u.normalize();
+}
+
+let lastHUD = {};
+function solve(t, dtReal) {
+  // --- kite
+  const ks = kiteAt(t), dir = kiteDir(ks.h, ks.d);
+  const kpos = dir.clone().multiplyScalar(R + KITE_OFFSET).add(ANCHOR);
+  const ks2 = kiteAt(Math.min(t + 0.05, TOTAL)), dir2 = kiteDir(ks2.h, ks2.d);
+  const vel = dir2.clone().sub(dir).multiplyScalar(R / 0.05);
+  const kspeed = vel.length();
+  const target = parkedUp(dir);
+  const w = smooth((kspeed - 1.5) / 8);
+  if (kspeed > 0.01) target.multiplyScalar(1 - w).addScaledVector(vel.clone().normalize(), w).normalize();
+  kiteUp.lerp(target, dtReal > 0 ? Math.min(1, dtReal * 6) : 1).normalize();
+  const kf = frameKite(kpos, kiteUp, ANCHOR);
+  kite.position.copy(kpos); kite.quaternion.copy(kf.q);
+
+  // steering: hours per second, + = toward 3h = rider's right hand
+  const hv = (ks2.h - ks.h) / 0.05;
+  const steerTarget = Math.max(-1, Math.min(1, hv * 0.9));
+  steer = dtReal > 0 ? lerp(steer, steerTarget, Math.min(1, dtReal * 8)) : steerTarget;
+
+  // --- rider
+  const p = poseAt(t);
+  const hip = new V(...p.hip), pt = p.torso * D2R;
+  const tdir = new V(0, Math.cos(pt), -Math.sin(pt)), fwd = new V(0, Math.sin(pt), Math.cos(pt));
+  const neck = hip.clone().addScaledVector(tdir, 0.5);
+  const headP = neck.clone().addScaledVector(tdir, 0.17).addScaledVector(fwd, 0.02);
+  const side = new V(1, 0, 0); // +X = rider's left
+  const shL = neck.clone().addScaledVector(side, 0.19).addScaledVector(tdir, -0.05);
+  const shR = neck.clone().addScaledVector(side, -0.19).addScaledVector(tdir, -0.05);
+  const hipL = hip.clone().addScaledVector(side, 0.1), hipR = hip.clone().addScaledVector(side, -0.1);
+  const hook = hip.clone().addScaledVector(tdir, 0.13).addScaledVector(fwd, 0.17);
+
+  board.position.set(...p.bpos); board.rotation.set(p.roll * D2R, p.yaw * D2R, 0, 'YXZ'); board.updateMatrix();
+  const bn = UP.clone().applyQuaternion(board.quaternion);
+  const footFront = new V(-0.26, 0.04, 0).applyMatrix4(board.matrix).addScaledVector(bn, 0.06);
+  const footBack = new V(0.26, 0.04, 0).applyMatrix4(board.matrix).addScaledVector(bn, 0.06);
+  const pole = new V(...p.pole).normalize();
+  const legR = ik(hipR, footFront, 0.46, 0.45, pole.clone().add(new V(-0.25, 0, 0)));
+  const legL = ik(hipL, footBack, 0.46, 0.45, pole.clone().add(new V(0.25, 0, 0)));
+  place(parts.thighR, hipR, legR.joint); place(parts.shinR, legR.joint, legR.end); ball(parts.kneeR, legR.joint);
+  place(parts.thighL, hipL, legL.joint); place(parts.shinL, legL.joint, legL.end); ball(parts.kneeL, legL.joint);
+
+  place(parts.torso, hip, neck); ball(parts.pelvis, hip); ball(parts.chest, neck.clone().addScaledVector(tdir, -0.1));
+  place(parts.harness, hip.clone().addScaledVector(tdir, 0.06), hip.clone().addScaledVector(tdir, 0.2));
+  ball(parts.hook, hook);
+  place(parts.neck, neck.clone().addScaledVector(tdir, -0.03), headP);
+  ball(parts.head, headP);
+  ball(parts.helmet, headP.clone().addScaledVector(tdir, 0.03)); parts.helmet.scale.y = 0.118 * 0.75;
+  parts.helmet.quaternion.setFromUnitVectors(UP, tdir);
+
+  // --- bar (stays level-ish: oriented from the parked kite frame, then tilted by steering)
+  const lineDir = kpos.clone().sub(hook).normalize();
+  const pf = frameKite(kpos, parkedUp(dir), hook);
+  const barAxis = pf.x.clone(); // +barAxis = rider's right end
+  const k = lineDir.clone().cross(barAxis).normalize();
+  barAxis.applyAxisAngle(k, steer * 22 * D2R);
+  const barC = hook.clone().addScaledVector(lineDir, 0.56 - 0.3 * p.sheet);
+  bar.position.copy(barC); bar.quaternion.setFromUnitVectors(UP, barAxis);
+  const endR = barC.clone().addScaledVector(barAxis, 0.25), endL = barC.clone().addScaledVector(barAxis, -0.25);
+  barEndR.position.copy(endR); barEndR.quaternion.copy(bar.quaternion);
+  barEndL.position.copy(endL); barEndL.quaternion.copy(bar.quaternion);
+  const handR = barC.clone().addScaledVector(barAxis, 0.2), handL = barC.clone().addScaledVector(barAxis, -0.2);
+  const armR = ik(shR, handR, 0.31, 0.3, new V(-0.6, -1, -0.2));
+  const armL = ik(shL, handL, 0.31, 0.3, new V(0.6, -1, -0.2));
+  place(parts.uarmR, shR, armR.joint); place(parts.farmR, armR.joint, armR.end); ball(parts.elbowR, armR.joint); ball(parts.handR, armR.end); ball(parts.shoulderR, shR);
+  place(parts.uarmL, shL, armL.joint); place(parts.farmL, armL.joint, armL.end); ball(parts.elbowL, armL.joint); ball(parts.handL, armL.end); ball(parts.shoulderL, shL);
+  parts.handR.material = steer > 0.3 ? mats.handOn : mats.hand;
+  parts.handL.material = steer < -0.3 ? mats.handOn : mats.hand;
+
+  // --- lines
+  const att = key => KITE_ATTACH[key].clone().applyQuaternion(kf.q).add(kpos);
+  const segs = [[hook, att('frontL')], [hook, att('frontR')], [endL, att('backL')], [endR, att('backR')]];
+  segs.forEach(([a, b], i) => { linePos.set([a.x, a.y, a.z, b.x, b.y, b.z], i * 6); });
+  lineGeo.attributes.position.needsUpdate = true; lineGeo.computeBoundingSphere();
+
+  // --- trail
+  trailPts.push(dir.clone().multiplyScalar(R).add(ANCHOR));
+  if (trailPts.length > TRAIL) trailPts.shift();
+  const ta = trailGeo.attributes.position.array;
+  for (let i = 0; i < TRAIL; i++) { const q = trailPts[Math.max(0, Math.min(trailPts.length - 1, i - (TRAIL - trailPts.length)))]; ta[i * 3] = q.x; ta[i * 3 + 1] = q.y; ta[i * 3 + 2] = q.z; }
+  trailGeo.attributes.position.needsUpdate = true;
+
+  // --- HUD data
+  const staticPow = Math.max(0, dir.z);
+  const power = Math.max(0, Math.min(1, 0.1 + 1.15 * staticPow + kspeed / 30));
+  const elev = Math.asin(Math.max(-1, Math.min(1, dir.y))) / D2R;
+  return { h: ks.h, elev, power, steer };
+}
+
+/* ---------------- HUD ---------------- */
+const clockSvg = document.getElementById('clock');
+const NS = 'http://www.w3.org/2000/svg';
+const CX = 100, CY = 104, CR = 84;
+function svgEl(tag, attrs, parent = clockSvg) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+function ptAt(h, r) { const a = h * 30 * D2R; return [CX + r * Math.sin(a), CY - r * Math.cos(a)]; }
+function arcPath(h0, h1, r0, r1) {
+  const [ax, ay] = ptAt(h0, r1), [bx, by] = ptAt(h1, r1), [cx, cy] = ptAt(h1, r0), [dx, dy] = ptAt(h0, r0);
+  return `M${ax},${ay} A${r1},${r1} 0 0 1 ${bx},${by} L${cx},${cy} A${r0},${r0} 0 0 0 ${dx},${dy} Z`;
+}
+svgEl('path', { d: arcPath(-3, 3, CR - 12, CR), fill: 'var(--edge)', opacity: 0.35 });
+svgEl('path', { d: arcPath(-3, 3, 0, CR - 12), fill: 'var(--chip)' });
+svgEl('path', { d: arcPath(-2.6, -1.3, 20, CR - 12), fill: 'var(--mid)', opacity: 0.35 });
+svgEl('path', { d: arcPath(1.3, 2.6, 20, CR - 12), fill: 'var(--mid)', opacity: 0.35 });
+svgEl('line', { x1: CX - CR - 6, y1: CY, x2: CX + CR + 6, y2: CY, stroke: 'var(--sea)', 'stroke-width': 3 });
+for (let h = -3; h <= 3; h++) {
+  const [x, y] = ptAt(h, CR + 0), [x2, y2] = ptAt(h, CR - 6);
+  svgEl('line', { x1: x, y1: y, x2, y2, stroke: 'var(--muted)', 'stroke-width': 1.5 });
+  const [lx, ly] = ptAt(h, CR - 20);
+  const t = svgEl('text', { x: lx, y: ly + 4, 'text-anchor': 'middle', 'font-size': 11, 'font-family': 'JetBrains Mono, monospace', fill: 'var(--muted)', 'font-weight': 700 });
+  t.textContent = (h <= 0 ? 12 + h : h) + 'h';
+}
+svgEl('circle', { cx: CX, cy: CY - 6, r: 5, fill: 'var(--ink)' });
+const hudLine = svgEl('line', { x1: CX, y1: CY - 6, x2: CX, y2: CY - CR, stroke: 'var(--ink)', 'stroke-width': 1, 'stroke-dasharray': '3 3' });
+const hudKite = svgEl('circle', { cx: CX, cy: CY - CR, r: 7, fill: 'var(--accent)', stroke: 'var(--panel)', 'stroke-width': 2 });
+const fmtClock = h => {
+  let x = ((h % 12) + 12) % 12; const half = Math.round(x * 2) / 2; let hr = Math.floor(half); const m = half - hr ? '30' : '';
+  if (hr === 0) hr = 12; return `${hr}h${m}`;
+};
+const elClock = document.getElementById('hClock'), elElev = document.getElementById('hElev'), elPow = document.getElementById('hPow'), elPowTxt = document.getElementById('hPowTxt'), elHand = document.getElementById('hHand');
+function updateHUD(d) {
+  const h = mirrored ? -d.h : d.h;
+  const [x, y] = ptAt(h, CR - 4);
+  hudKite.setAttribute('cx', x); hudKite.setAttribute('cy', y);
+  hudLine.setAttribute('x2', x); hudLine.setAttribute('y2', y);
+  elClock.textContent = fmtClock(h);
+  elElev.textContent = `${Math.round(d.elev)}°`;
+  elPow.style.width = `${Math.round(d.power * 100)}%`;
+  elPow.style.backgroundSize = `${100 / Math.max(0.05, d.power)}% 100%`;
+  elPowTxt.textContent = d.power < 0.3 ? 'faible' : d.power < 0.6 ? 'régulière' : 'forte';
+  const s = mirrored ? -d.steer : d.steer;
+  elHand.textContent = s > 0.3 ? 'droite' : s < -0.3 ? 'gauche' : 'aucune';
+  elHand.classList.toggle('on', Math.abs(s) > 0.3);
+}
+
+/* ---------------- Panel ---------------- */
+const segsEl = document.getElementById('segs'), listEl = document.getElementById('stepList');
+STEPS.forEach((s, i) => {
+  const b = document.createElement('button'); b.textContent = s.name; b.style.setProperty('--w', s.t1 - s.t0); b.onclick = () => goStep(i); segsEl.appendChild(b);
+  const l = document.createElement('button'); l.innerHTML = `<span>${String(i + 1).padStart(2, '0')}</span><span>${s.name} <span style="color:var(--muted);font-weight:400">· ${s.sub}</span></span>`; l.onclick = () => goStep(i); listEl.appendChild(l);
+});
+let curStep = -1;
+function renderStep(i) {
+  const s = STEPS[i];
+  document.getElementById('stepNum').textContent = `ÉTAPE ${i + 1} / ${STEPS.length}`;
+  document.getElementById('stepTitle').textContent = s.name;
+  document.getElementById('stepSub').textContent = s.sub;
+  document.getElementById('tKite').textContent = fill(s.kite);
+  document.getElementById('tBody').textContent = fill(s.body);
+  document.getElementById('tBar').textContent = fill(s.bar);
+  document.getElementById('tErr').textContent = fill(s.err);
+  [...segsEl.children].forEach((b, k) => b.classList.toggle('cur', k === i));
+  [...listEl.children].forEach((b, k) => b.classList.toggle('cur', k === i));
+  buildPath(i);
+}
+
+/* ---------------- Controls ---------------- */
+let t = 0, playing = !reduceMotion, speed = 1, scrubbing = false, loopStep = false;
+const scrub = document.getElementById('scrub'), playIcon = document.getElementById('playIcon');
+function setPlaying(v) { playing = v; playIcon.innerHTML = v ? '<path d="M3 2h4v12H3zM9 2h4v12H9z"/>' : '<path d="M4 2l10 6-10 6z"/>'; }
+setPlaying(playing);
+function goStep(i) { i = (i + STEPS.length) % STEPS.length; t = STEPS[i].t0; trailPts = []; }
+document.getElementById('play').onclick = () => setPlaying(!playing);
+document.getElementById('prev').onclick = () => goStep(t - STEPS[curStep].t0 > 0.6 ? curStep : curStep - 1);
+document.getElementById('next').onclick = () => goStep(curStep + 1);
+document.getElementById('speed').onchange = e => speed = +e.target.value;
+document.getElementById('loopStep').onchange = e => loopStep = e.target.checked;
+document.getElementById('showWin').onchange = e => winGroup.visible = e.target.checked;
+scrub.addEventListener('input', () => { scrubbing = true; t = +scrub.value; trailPts = []; });
+scrub.addEventListener('change', () => { scrubbing = false; });
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' && e.target.type === 'range') return;
+  if (e.code === 'Space') { e.preventDefault(); setPlaying(!playing); }
+  if (e.code === 'ArrowRight') goStep(curStep + 1);
+  if (e.code === 'ArrowLeft') goStep(curStep - 1);
+});
+function setDir(left) {
+  mirrored = left; rig.scale.x = left ? -1 : 1;
+  document.getElementById('dirL').setAttribute('aria-pressed', left); document.getElementById('dirR').setAttribute('aria-pressed', !left);
+  if (curStep >= 0) renderStep(curStep);
+  trailPts = [];
+}
+document.getElementById('dirL').onclick = () => setDir(true);
+document.getElementById('dirR').onclick = () => setDir(false);
+
+// Camera presets
+const CAMS = {
+  dos: { pos: new V(-2.2, 2.0, -8), target: new V(0, 2.6, 4) },
+  profil: { pos: new V(4.6, 1.4, 0.6), target: new V(0, 0.55, 0.25) },
+  fenetre: { pos: new V(0, 9, -27), target: new V(0, 9, 6) },
+};
+let camTween = null;
+function setCam(name, instant) {
+  const c = CAMS[name]; if (!c) return;
+  document.querySelectorAll('[data-cam]').forEach(b => b.setAttribute('aria-pressed', b.dataset.cam === name));
+  const pos = c.pos.clone(), target = c.target.clone();
+  if (mirrored && name !== 'fenetre') { pos.x *= -1; target.x *= -1; }
+  if (instant || reduceMotion) { camera.position.copy(pos); controls.target.copy(target); camTween = null; return; }
+  camTween = { from: camera.position.clone(), fromT: controls.target.clone(), pos, target, k: 0 };
+}
+document.querySelectorAll('[data-cam]').forEach(b => b.onclick = () => setCam(b.dataset.cam));
+setCam('dos', true);
+
+/* ---------------- Theme ---------------- */
+function readTheme() {
+  const cs = getComputedStyle(document.documentElement), g = n => new THREE.Color(cs.getPropertyValue(n).trim() || '#888');
+  const sky = g('--sky'); scene.background = sky; scene.fog.color = sky;
+  waterMat.color = g('--sea');
+  windMat.color = g('--wind');
+  winUniforms.uPow.value = g('--power'); winUniforms.uMid.value = g('--mid'); winUniforms.uEdge.value = g('--edge');
+  edgeLine.material.color = g('--edge');
+  const acc = g('--accent'); kiteMat.color = acc; trailMat.color = acc; pathMat.color = acc; mats.handOn.color = acc;
+  const dark = sky.getHSL({}).l < 0.3;
+  lineMat.color = new THREE.Color(dark ? 0xc9d6da : 0x223036);
+}
+readTheme();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readTheme);
+new MutationObserver(readTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+/* ---------------- Loop ---------------- */
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage); resize();
+
+const clock = new THREE.Clock();
+let wallT = 0, foamOffset = 0;
+const m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), s4 = new V();
+function tick() {
+  const dt = Math.min(clock.getDelta(), 0.05); wallT += dt;
+  if (playing && !scrubbing) {
+    t += dt * speed;
+    if (loopStep && curStep >= 0 && t >= STEPS[curStep].t1) { t = STEPS[curStep].t0; trailPts = []; }
+    if (t >= TOTAL) { t = 0; trailPts = []; }
+  }
+  const si = stepIndexAt(t);
+  if (si !== curStep) { curStep = si; renderStep(si); }
+  if (!scrubbing) scrub.value = t.toFixed(2);
+
+  const d = solve(t, playing ? dt : 0);
+  updateHUD(d);
+
+  // water + foam move with board speed (rider travels toward -X in rig space)
+  const v = speedAt(t) * 7;
+  foamOffset += v * dt;
+  const wp = waterGeo.attributes.position.array, dirSign = mirrored ? -1 : 1;
+  for (let i = 0; i < wp.length; i += 3) {
+    const x = waterBase[i] + foamOffset * dirSign, z = waterBase[i + 2];
+    wp[i + 1] = 0.07 * Math.sin(x * 0.45 + wallT * 1.2) + 0.05 * Math.sin(z * 0.62 - wallT * 1.6 + x * 0.2);
+  }
+  waterGeo.attributes.position.needsUpdate = true; waterGeo.computeVertexNormals();
+  foamData.forEach((f, i) => {
+    f.x += v * dt * f.s; f.z += 0.4 * dt;
+    if (f.x > 40) f.x -= 80; if (f.z > 30) f.z -= 60;
+    const near = Math.abs(f.x) < 1.2 && Math.abs(f.z) < 1.2;
+    s4.set(f.s * (1 + v * 0.25), 1, f.s * 0.35);
+    m4.compose(new V(f.x, near ? -1 : 0.06, f.z), q4, s4); foam.setMatrixAt(i, m4);
+  });
+  foam.instanceMatrix.needsUpdate = true;
+  for (let i = 0; i < WN; i++) {
+    const w = windData[i]; w.z += dt * 9; if (w.z > 30) { w.z -= 52; w.x = (Math.random() - 0.5) * 50; }
+    windPos.set([w.x, w.y, w.z, w.x, w.y, w.z + w.l], i * 6);
+  }
+  windGeo.attributes.position.needsUpdate = true;
+
+  if (camTween) {
+    camTween.k = Math.min(1, camTween.k + dt / 0.9); const e = smooth(camTween.k);
+    camera.position.lerpVectors(camTween.from, camTween.pos, e); controls.target.lerpVectors(camTween.fromT, camTween.target, e);
+    if (camTween.k >= 1) camTween = null;
+  }
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+tick();
+</script>
+</body>
+</html>
