@@ -296,10 +296,18 @@ const KITE_KEYS = [
   [0, 0, 6], [3, 0, 6], [4.6, -0.7, 6], [5.5, -0.7, 6], [7.4, 2.45, 30], [8.1, 2.45, 28],
   [9.8, 1.9, 16], [11, 1.95, 12], [12, 2, 10], [15, 2, 10],
 ];
+// Low-wind S: an ellipse in (hour, depth). Diving (hour increasing) the kite cuts deep through the
+// window toward the power zone; it turns at the bottom and climbs back up close to the edge.
+// The phase is warped so the dive is quicker than the climb.
+const SINE = { t0: 15, period: 2.9, phi0: 2.6, hc: 1.75, ah: 0.7, dc: 14, ad: 7 };
+function sinePhase(t) {
+  const u = t - SINE.t0, psi = SINE.phi0 + 2 * Math.PI * u / SINE.period;
+  return { phi: psi + 0.35 * Math.sin(psi), ramp: smooth(u / 0.8) * (1 - smooth((u - 5.4) / 0.6)) };
+}
 function kiteAt(t) {
-  if (t >= 15) {
-    const u = t - 15, s = Math.sin(2 * Math.PI * u / 3), ramp = smooth(u / 0.8) * (1 - smooth((u - 5.4) / 0.6));
-    return { h: 2 + (-0.25 + 0.75 * s) * ramp, d: 10 + ramp * (6 + 8 * s) };
+  if (t >= SINE.t0) {
+    const { phi, ramp } = sinePhase(t);
+    return { h: 2 + (SINE.hc + SINE.ah * Math.sin(phi) - 2) * ramp, d: 10 + (SINE.dc + SINE.ad * Math.cos(phi) - 10) * ramp };
   }
   for (let i = 0; i < KITE_KEYS.length - 1; i++) {
     const a = KITE_KEYS[i], b = KITE_KEYS[i + 1];
@@ -333,8 +341,8 @@ function poseAt(t) {
     }
   }
   if (!out) out = structuredClone(P.ride);
-  if (t > 15) { // carve with the S: bear away on the dive, edge back up on the climb
-    const u = t - 15, s = Math.sin(2 * Math.PI * u / 3) * smooth(u / 0.8) * (1 - smooth((u - 5.4) / 0.6));
+  if (t > SINE.t0) { // carve with the S: bear away on the dive, edge back up on the climb
+    const { phi, ramp } = sinePhase(t), s = Math.cos(phi) * ramp;
     out.yaw += 10 * s; out.hip[1] -= 0.05 * s; out.torso -= 6 * s; out.roll += 6 * s;
   }
   return out;
