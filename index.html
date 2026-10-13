@@ -275,11 +275,11 @@ const STEPS = [
     body: 'Épaules en arrière, bassin sous les épaules, poids sur les talons. Jambe avant plus tendue, jambe arrière fléchie. Regarde où tu vas, pas le kite.',
     bar: 'Bras presque tendus. Tu doses la puissance en bordant ou en choquant la barre, pas en tirant avec les bras.',
     err: 'Kite trop haut (entre 12h et {c1}) : peu de traction, tu ralentis et tu coules. Fixer le kite des yeux : tu perds ton cap.' },
-  { t0: 15, t1: 21, name: 'Vent faible', sub: 'Faire des S avec le kite',
-    kite: 'Si ça ne tire pas assez, fais des S entre {c1} et {c230}. Chaque descente fait accélérer le kite et redonne de la puissance.',
+  { t0: 15, t1: 21, name: 'Vent faible', sub: 'Faire des 8 avec le kite',
+    kite: 'Si ça ne tire pas assez, fais des 8 entre {c1} et {c230} : le kite tourne dans un sens en bas, dans l\'autre sens en haut. Chaque descente le fait accélérer et redonne de la puissance.',
     body: 'Abats légèrement pendant que le kite descend, remonte au vent quand il remonte. Garde ta vitesse.',
     bar: 'Alterne main {front} (descente) et main {back} (montée), en souplesse.',
-    err: 'S trop amples ou trop bas : le kite touche l\'eau. Reste dans la moitié haute de la fenêtre.' },
+    err: 'Tourner toujours dans le même sens : tu fais des boucles et les lignes se vrillent. Et des 8 trop bas : le kite touche l\'eau.' },
 ];
 
 let mirrored = false;
@@ -296,18 +296,18 @@ const KITE_KEYS = [
   [0, 0, 6], [3, 0, 6], [4.6, -0.7, 6], [5.5, -0.7, 6], [7.4, 2.45, 30], [8.1, 2.45, 28],
   [9.8, 1.9, 16], [11, 1.95, 12], [12, 2, 10], [15, 2, 10],
 ];
-// Low-wind S: an ellipse in (hour, depth). Diving (hour increasing) the kite cuts deep through the
-// window toward the power zone; it turns at the bottom and climbs back up close to the edge.
-// The phase is warped so the dive is quicker than the climb.
-const SINE = { t0: 15, period: 2.9, phi0: 2.6, hc: 1.75, ah: 0.7, dc: 14, ad: 7 };
+// Low-wind figure 8: depth oscillates at twice the frequency of the hour (1:2 Lissajous), so the
+// bottom and top turns go in opposite directions and the lines never twist (a loop would).
+// The phase is warped so the dives are quicker than the climbs.
+const SINE = { t0: 15, period: 3.4, phi0: 0.28, hc: 1.75, ah: 0.7, dc: 13, ad: 6 };
 function sinePhase(t) {
   const u = t - SINE.t0, psi = SINE.phi0 + 2 * Math.PI * u / SINE.period;
-  return { phi: psi + 0.35 * Math.sin(psi), ramp: smooth(u / 0.8) * (1 - smooth((u - 5.4) / 0.6)) };
+  return { phi: psi + 0.3 * Math.sin(psi), ramp: smooth(u / 0.8) * (1 - smooth((u - 5.4) / 0.6)) };
 }
 function kiteAt(t) {
   if (t >= SINE.t0) {
     const { phi, ramp } = sinePhase(t);
-    return { h: 2 + (SINE.hc + SINE.ah * Math.sin(phi) - 2) * ramp, d: 10 + (SINE.dc + SINE.ad * Math.cos(phi) - 10) * ramp };
+    return { h: 2 + (SINE.hc + SINE.ah * Math.sin(phi) - 2) * ramp, d: 10 + (SINE.dc + SINE.ad * Math.sin(2 * phi) - 10) * ramp };
   }
   for (let i = 0; i < KITE_KEYS.length - 1; i++) {
     const a = KITE_KEYS[i], b = KITE_KEYS[i + 1];
