@@ -73,8 +73,8 @@ main { display: grid; grid-template-columns: minmax(0, 1fr) 400px; min-height: 0
 .label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
 .hands { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .handbox { display: grid; justify-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
-.handbox svg { width: 48px; height: 52px; display: block; transition: color 0.15s; transform: rotate(180deg); }
-.handbox.right svg { transform: rotate(180deg) scaleX(-1); }
+.handbox svg { width: 48px; height: 52px; display: block; transition: color 0.15s; }
+.handbox.right svg { transform: scaleX(-1); }
 .handbox b { font-family: var(--font-data); font-size: 12px; font-weight: 700; color: var(--muted); }
 .handbox.on { color: var(--accent); }
 .handbox.on b { color: var(--ink); }
@@ -171,16 +171,14 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
       <canvas id="c"></canvas>
       <div class="hud" aria-live="polite">
         <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-          <!-- fist on the bar, seen from behind: wrist above, four fingers wrapped over the bar, thumb on the outside -->
+          <!-- overhand grip seen from behind: forearm from below, back of the hand on top of the bar,
+               knuckles rolled over it (fingers hidden on the far side), thumb tucked under on the inside -->
           <symbol id="fist" viewBox="0 0 48 52">
-            <rect x="0" y="33" width="48" height="7" rx="3.5" fill="var(--muted)" opacity="0.55"/>
-            <rect x="17" y="0" width="14" height="16" rx="4" fill="currentColor"/>
-            <rect x="10" y="10" width="27" height="19" rx="7" fill="currentColor"/>
-            <g fill="currentColor" stroke="var(--panel)" stroke-width="1.2">
-              <rect x="9.5" y="23" width="7" height="19" rx="3.5"/><rect x="16.5" y="23" width="7" height="20" rx="3.5"/>
-              <rect x="23.5" y="23" width="7" height="20" rx="3.5"/><rect x="30.5" y="23" width="6.5" height="18" rx="3.25"/>
-              <rect x="34" y="15" width="8" height="17" rx="4" transform="rotate(-18 38 23)"/>
-            </g>
+            <rect x="30" y="16" width="16" height="9" rx="4.5" fill="currentColor" transform="rotate(22 33 20)"/>
+            <rect x="0" y="13" width="48" height="7" rx="3.5" fill="var(--muted)" opacity="0.55"/>
+            <rect x="17" y="36" width="14" height="16" rx="4" fill="currentColor"/>
+            <rect x="10" y="12" width="27" height="28" rx="9" fill="currentColor"/>
+            <g fill="currentColor"><circle cx="14.5" cy="13" r="4.5"/><circle cx="21" cy="11.5" r="4.5"/><circle cx="27.5" cy="11.5" r="4.5"/><circle cx="33" cy="13.5" r="4"/></g>
           </symbol>
         </svg>
         <div class="label">Mains sur la barre</div>
