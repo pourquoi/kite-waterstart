@@ -70,14 +70,18 @@ main { display: grid; grid-template-columns: minmax(0, 1fr) 400px; min-height: 0
   background: color-mix(in srgb, var(--panel) 88%, transparent); backdrop-filter: blur(6px);
   border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px;
 }
-.hud svg { width: 100%; height: auto; display: block; }
-.hud .row { display: flex; justify-content: space-between; font-size: 13px; gap: 8px; }
-.hud .row b { font-family: var(--font-data); font-weight: 700; font-variant-numeric: tabular-nums; }
 .label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
-.gauge { height: 8px; border-radius: 4px; background: var(--chip); overflow: hidden; }
-.gauge i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--edge), var(--mid), var(--power)); }
-.hand { font-family: var(--font-data); font-size: 13px; font-weight: 700; }
-.hand.on { color: var(--accent); }
+.hands { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.handbox { display: grid; justify-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
+.handbox svg { width: 48px; height: 52px; display: block; transition: color 0.15s; transform: rotate(180deg); }
+.handbox.right svg { transform: rotate(180deg) scaleX(-1); }
+.handbox b { font-family: var(--font-data); font-size: 12px; font-weight: 700; color: var(--muted); }
+.handbox.on { color: var(--accent); }
+.handbox.on b { color: var(--ink); }
+.grip { display: flex; flex-direction: row-reverse; align-items: flex-end; gap: 6px; }   /* gauge on the outer side */
+.handbox.right .grip { flex-direction: row; }
+.vgauge { width: 8px; height: 52px; border-radius: 4px; background: var(--chip); display: flex; align-items: flex-end; overflow: hidden; }
+.vgauge i { display: block; width: 100%; height: 0; background: var(--accent); }
 .cams { position: absolute; top: 12px; right: 12px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
 .cams button, .toggle {
   background: color-mix(in srgb, var(--panel) 88%, transparent); color: var(--ink);
@@ -141,7 +145,10 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
   main { display: block; }
   .stage { height: 68svh; min-height: 420px; }
   .panel { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
-  .hud { display: none; }
+  .hud { width: 150px; padding: 8px 10px; }
+  .hud .label { display: none; }
+  .handbox svg { width: 38px; height: 42px; }
+  .vgauge { height: 42px; }
   .transport { grid-template-columns: auto minmax(0, 1fr); }
   .transport .speed { display: none; }
   .segs button { font-size: 0; }
@@ -163,15 +170,24 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
     <section class="stage" id="stage" aria-label="Vue 3D du waterstart">
       <canvas id="c"></canvas>
       <div class="hud" aria-live="polite">
-        <div class="label">Position du kite (vue de dos)</div>
-        <svg id="clock" viewBox="0 0 200 116" role="img" aria-label="Horloge de la fenêtre de vent"></svg>
-        <div class="row"><span>Horloge</span><b id="hClock">12h</b></div>
-        <div class="row"><span>Hauteur</span><b id="hElev">80°</b></div>
-        <div>
-          <div class="row"><span>Traction</span><b id="hPowTxt">faible</b></div>
-          <div class="gauge"><i id="hPow"></i></div>
+        <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+          <!-- fist on the bar, seen from behind: wrist above, four fingers wrapped over the bar, thumb on the outside -->
+          <symbol id="fist" viewBox="0 0 48 52">
+            <rect x="0" y="33" width="48" height="7" rx="3.5" fill="var(--muted)" opacity="0.55"/>
+            <rect x="17" y="0" width="14" height="16" rx="4" fill="currentColor"/>
+            <rect x="10" y="10" width="27" height="19" rx="7" fill="currentColor"/>
+            <g fill="currentColor" stroke="var(--panel)" stroke-width="1.2">
+              <rect x="9.5" y="23" width="7" height="19" rx="3.5"/><rect x="16.5" y="23" width="7" height="20" rx="3.5"/>
+              <rect x="23.5" y="23" width="7" height="20" rx="3.5"/><rect x="30.5" y="23" width="6.5" height="18" rx="3.25"/>
+              <rect x="34" y="15" width="8" height="17" rx="4" transform="rotate(-18 38 23)"/>
+            </g>
+          </symbol>
+        </svg>
+        <div class="label">Mains sur la barre</div>
+        <div class="hands">
+          <div class="handbox" id="handL"><div class="grip"><svg role="img" aria-label="Main gauche"><use href="#fist"/></svg><div class="vgauge"><i></i></div></div><span>Gauche</span><b>—</b></div>
+          <div class="handbox right" id="handR"><div class="grip"><svg role="img" aria-label="Main droite"><use href="#fist"/></svg><div class="vgauge"><i></i></div></div><span>Droite</span><b>—</b></div>
         </div>
-        <div class="row"><span>Main qui tire</span><span class="hand" id="hHand">aucune</span></div>
       </div>
       <div class="cams">
         <button data-cam="dos" aria-pressed="true">Vue de dos</button>
@@ -881,56 +897,19 @@ function solve(t, dtReal) {
   for (let i = 0; i < TRAIL; i++) { const q = trailPts[Math.max(0, Math.min(trailPts.length - 1, i - (TRAIL - trailPts.length)))]; ta[i * 3] = q.x; ta[i * 3 + 1] = q.y; ta[i * 3 + 2] = q.z; }
   trailGeo.attributes.position.needsUpdate = true;
 
-  // --- HUD data
-  const staticPow = Math.max(0, dir.z);
-  const power = Math.max(0, Math.min(1, 0.1 + 1.15 * staticPow + kspeed / 30));
-  const elev = Math.asin(Math.max(-1, Math.min(1, dir.y))) / D2R;
-  return { h: ks.h, elev, power, steer };
+  return { steer };
 }
 
 /* ---------------- HUD ---------------- */
-const clockSvg = document.getElementById('clock');
-const NS = 'http://www.w3.org/2000/svg';
-const CX = 100, CY = 104, CR = 84;
-function svgEl(tag, attrs, parent = clockSvg) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
-function ptAt(h, r) { const a = h * 30 * D2R; return [CX + r * Math.sin(a), CY - r * Math.cos(a)]; }
-function arcPath(h0, h1, r0, r1) {
-  const [ax, ay] = ptAt(h0, r1), [bx, by] = ptAt(h1, r1), [cx, cy] = ptAt(h1, r0), [dx, dy] = ptAt(h0, r0);
-  return `M${ax},${ay} A${r1},${r1} 0 0 1 ${bx},${by} L${cx},${cy} A${r0},${r0} 0 0 0 ${dx},${dy} Z`;
-}
-svgEl('path', { d: arcPath(-3, 3, CR - 12, CR), fill: 'var(--edge)', opacity: 0.35 });
-svgEl('path', { d: arcPath(-3, 3, 0, CR - 12), fill: 'var(--chip)' });
-svgEl('path', { d: arcPath(-2.6, -1.3, 20, CR - 12), fill: 'var(--mid)', opacity: 0.35 });
-svgEl('path', { d: arcPath(1.3, 2.6, 20, CR - 12), fill: 'var(--mid)', opacity: 0.35 });
-svgEl('line', { x1: CX - CR - 6, y1: CY, x2: CX + CR + 6, y2: CY, stroke: 'var(--sea)', 'stroke-width': 3 });
-for (let h = -3; h <= 3; h++) {
-  const [x, y] = ptAt(h, CR + 0), [x2, y2] = ptAt(h, CR - 6);
-  svgEl('line', { x1: x, y1: y, x2, y2, stroke: 'var(--muted)', 'stroke-width': 1.5 });
-  const [lx, ly] = ptAt(h, CR - 20);
-  const t = svgEl('text', { x: lx, y: ly + 4, 'text-anchor': 'middle', 'font-size': 11, 'font-family': 'JetBrains Mono, monospace', fill: 'var(--muted)', 'font-weight': 700 });
-  t.textContent = (h <= 0 ? 12 + h : h) + 'h';
-}
-svgEl('circle', { cx: CX, cy: CY - 6, r: 5, fill: 'var(--ink)' });
-const hudLine = svgEl('line', { x1: CX, y1: CY - 6, x2: CX, y2: CY - CR, stroke: 'var(--ink)', 'stroke-width': 1, 'stroke-dasharray': '3 3' });
-const hudKite = svgEl('circle', { cx: CX, cy: CY - CR, r: 7, fill: 'var(--accent)', stroke: 'var(--panel)', 'stroke-width': 2 });
-const fmtClock = h => {
-  let x = ((h % 12) + 12) % 12; const half = Math.round(x * 2) / 2; let hr = Math.floor(half); const m = half - hr ? '30' : '';
-  if (hr === 0) hr = 12; return `${hr}h${m}`;
-};
-const elClock = document.getElementById('hClock'), elElev = document.getElementById('hElev'), elPow = document.getElementById('hPow'), elPowTxt = document.getElementById('hPowTxt'), elHand = document.getElementById('hHand');
+const handUI = ['handL', 'handR'].map(id => { const box = document.getElementById(id); return { box, bar: box.querySelector('.vgauge i'), word: box.querySelector('b') }; });
 function updateHUD(d) {
-  const h = mirrored ? -d.h : d.h;
-  const [x, y] = ptAt(h, CR - 4);
-  hudKite.setAttribute('cx', x); hudKite.setAttribute('cy', y);
-  hudLine.setAttribute('x2', x); hudLine.setAttribute('y2', y);
-  elClock.textContent = fmtClock(h);
-  elElev.textContent = `${Math.round(d.elev)}°`;
-  elPow.style.width = `${Math.round(d.power * 100)}%`;
-  elPow.style.backgroundSize = `${100 / Math.max(0.05, d.power)}% 100%`;
-  elPowTxt.textContent = d.power < 0.3 ? 'faible' : d.power < 0.6 ? 'régulière' : 'forte';
-  const s = mirrored ? -d.steer : d.steer;
-  elHand.textContent = s > 0.3 ? 'droite' : s < -0.3 ? 'gauche' : 'aucune';
-  elHand.classList.toggle('on', Math.abs(s) > 0.3);
+  const s = mirrored ? -d.steer : d.steer;   // + = right hand pulls
+  [-s, s].forEach((amt, i) => {
+    const a = Math.max(0, Math.min(1, amt)), on = a > 0.3, u = handUI[i];
+    u.box.classList.toggle('on', on);
+    u.bar.style.height = `${Math.round(a * 100)}%`;
+    u.word.textContent = !on ? '—' : a < 0.7 ? 'tire' : 'tire fort';
+  });
 }
 
 /* ---------------- Panel ---------------- */
