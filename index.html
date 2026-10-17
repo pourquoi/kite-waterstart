@@ -18,7 +18,13 @@
   --accent: #c8246a;
   --accent-ink: #ffffff;
   --sea: #2b7584;
-  --sky: #cfe2e5;
+  --sea-shallow: #5fd8cc;
+  --sea-deep: #1386a3;
+  --sand: #f1ecd2;
+  --beach: #f3e6c4;
+  --scrub: #5d7a3c;
+  --sky: #d4ecf7;
+  --sky-top: #2a7fd4;
   --wind: #ffffff;
   --power: #e0503a;
   --mid: #e39b2e;
@@ -31,14 +37,14 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0a181d; --panel: #0f222a; --ink: #e2eeed; --muted: #8ea8ae; --line: #1f3b45;
-    --accent: #ff5a9b; --accent-ink: #1a0610; --sea: #10404b; --sky: #0c2730; --wind: #bfe3ea;
+    --accent: #ff5a9b; --accent-ink: #1a0610;
     --power: #ff6a50; --mid: #f0b048; --edge: #46c08f; --chip: #163039;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0a181d; --panel: #0f222a; --ink: #e2eeed; --muted: #8ea8ae; --line: #1f3b45;
-  --accent: #ff5a9b; --accent-ink: #1a0610; --sea: #10404b; --sky: #0c2730; --wind: #bfe3ea;
+  --accent: #ff5a9b; --accent-ink: #1a0610;
   --power: #ff6a50; --mid: #f0b048; --edge: #46c08f; --chip: #163039;
   color-scheme: dark;
 }
@@ -135,8 +141,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
   main { display: block; }
   .stage { height: 68svh; min-height: 420px; }
   .panel { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
-  .hud { width: 170px; padding: 8px 10px; gap: 6px; }
-  .hud .row { font-size: 12px; }
+  .hud { display: none; }
   .transport { grid-template-columns: auto minmax(0, 1fr); }
   .transport .speed { display: none; }
   .segs button { font-size: 0; }
@@ -183,7 +188,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
         </div>
         <div class="track">
           <div class="segs" id="segs"></div>
-          <input type="range" id="scrub" min="0" max="21" step="0.01" value="0" aria-label="Chronologie">
+          <input type="range" id="scrub" min="0" max="29" step="0.01" value="0" aria-label="Chronologie">
         </div>
         <select id="speed" class="speed" aria-label="Vitesse">
           <option value="0.5">×0.5</option>
@@ -245,7 +250,7 @@ const R = 22;                       // line length (m)
 const ANCHOR = new V(0, 0.9, 0);    // where the lines converge (rider's harness, roughly)
 const WIND = new V(0, 0, 1);        // wind blows toward +Z; rider looks downwind
 const UP = new V(0, 1, 0);
-const TOTAL = 21;
+const TOTAL = 29;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------------- Content ---------------- */
@@ -267,15 +272,15 @@ const STEPS = [
     err: 'Piqué trop timide : pas de puissance, tu coules. Piqué trop long jusqu\'au ras de l\'eau : le kite t\'arrache vers l\'avant et peut tomber.' },
   { t0: 8, t1: 11, name: 'Se lever', sub: 'Prendre de la vitesse',
     kite: 'Dès que tu sens la traction, remets la barre à plat : le kite remonte vers {c130}–{c2}. Ne le laisse pas descendre sous {c230}.',
-    body: 'Jambes encore fléchies, déplie-les progressivement. Abats : pars un peu sous le vent pour que la planche accélère et commence à planer.',
+    body: 'Jambes encore fléchies, déplie-les progressivement. Abats franchement : pars sous le vent pour que la planche accélère et commence à planer. Une fois lancé, borde : reviens progressivement au cap en appuyant sur les talons.',
     bar: 'Barre à plat, mains au centre. Borde si ça manque de traction, choque si ça tire trop.',
     err: 'Tendre les jambes d\'un coup ou se mettre debout trop tôt : la planche freine et tu tombes en arrière.' },
-  { t0: 11, t1: 15, name: 'Naviguer', sub: 'Tenir le cap',
-    kite: 'Kite stable vers {c2}, environ 30 à 45° au-dessus de l\'eau. Il tire régulièrement, sans te soulever.',
+  { t0: 11, t1: 23, name: 'Naviguer', sub: 'Tenir le cap',
+    kite: 'Kite stable entre {c130} et {c2}, à environ 45° au-dessus de l\'eau. Il tire régulièrement, sans te soulever. Plus bas il tire plus fort ; plus haut il te soulève et t\'emmène sous le vent.',
     body: 'Épaules en arrière, bassin sous les épaules, poids sur les talons. Jambe avant plus tendue, jambe arrière fléchie. Regarde où tu vas, pas le kite.',
     bar: 'Bras presque tendus. Tu doses la puissance en bordant ou en choquant la barre, pas en tirant avec les bras.',
     err: 'Kite trop haut (entre 12h et {c1}) : peu de traction, tu ralentis et tu coules. Fixer le kite des yeux : tu perds ton cap.' },
-  { t0: 15, t1: 21, name: 'Vent faible', sub: 'Faire des 8 avec le kite',
+  { t0: 23, t1: 29, name: 'Vent faible', sub: 'Faire des 8 avec le kite',
     kite: 'Si ça ne tire pas assez, fais des 8 entre {c1} et {c230} : le kite tourne dans un sens en bas, dans l\'autre sens en haut. Chaque descente le fait accélérer et redonne de la puissance.',
     body: 'Abats légèrement pendant que le kite descend, remonte au vent quand il remonte. Garde ta vitesse.',
     bar: 'Alterne main {front} (descente) et main {back} (montée), en souplesse.',
@@ -291,15 +296,20 @@ const fill = s => s.replace(/\{(\w+)\}/g, (_, k) => WORDS[mirrored ? 'left' : 'r
 
 /* ---------------- Timeline ---------------- */
 const smooth = x => x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x);
+const clamp01 = x => Math.min(1, Math.max(0, x));
+const EASE = { s: smooth, in: x => clamp01(x) ** 2, out: x => 1 - (1 - clamp01(x)) ** 3 };
 // signed hours: 0 = 12h, + toward 3h (right as seen from behind), - toward 9h
+// Cruising: parked between 1h30 and 2h, ~42° above the water (h 1.55, 12° into the window = steady pull).
+// Riders park the kite around 45°: lower pulls harder, higher lifts you and drags you downwind.
+const NAV = { h: 1.55, d: 12 };
 const KITE_KEYS = [
-  [0, 0, 6], [3, 0, 6], [4.6, -0.7, 6], [5.5, -0.7, 6], [7.4, 2.45, 30], [8.1, 2.45, 28],
-  [9.8, 1.9, 16], [11, 1.95, 12], [12, 2, 10], [15, 2, 10],
+  [0, 0, 6], [3, 0, 6], [4.6, -0.7, 6], [5.5, -0.7, 6], [7.0, 1.9, 26, 'in'], [7.45, 2.4, 30, 'out'],
+  [9.8, 1.8, 16], [11, NAV.h, NAV.d], [23, NAV.h, NAV.d],
 ];
 // Low-wind figure 8: depth oscillates at twice the frequency of the hour (1:2 Lissajous), so the
 // bottom and top turns go in opposite directions and the lines never twist (a loop would).
 // The phase is warped so the dives are quicker than the climbs.
-const SINE = { t0: 15, period: 3.4, phi0: 0.28, hc: 1.75, ah: 0.7, dc: 13, ad: 6 };
+const SINE = { t0: 23, period: 3.4, phi0: 0.28, hc: 1.75, ah: 0.7, dc: 13, ad: 6 };
 function sinePhase(t) {
   const u = t - SINE.t0, psi = SINE.phi0 + 2 * Math.PI * u / SINE.period;
   return { phi: psi + 0.3 * Math.sin(psi), ramp: smooth(u / 0.8) * (1 - smooth((u - 5.4) / 0.6)) };
@@ -307,11 +317,11 @@ function sinePhase(t) {
 function kiteAt(t) {
   if (t >= SINE.t0) {
     const { phi, ramp } = sinePhase(t);
-    return { h: 2 + (SINE.hc + SINE.ah * Math.sin(phi) - 2) * ramp, d: 10 + (SINE.dc + SINE.ad * Math.sin(2 * phi) - 10) * ramp };
+    return { h: NAV.h + (SINE.hc + SINE.ah * Math.sin(phi) - NAV.h) * ramp, d: NAV.d + (SINE.dc + SINE.ad * Math.sin(2 * phi) - NAV.d) * ramp };
   }
   for (let i = 0; i < KITE_KEYS.length - 1; i++) {
     const a = KITE_KEYS[i], b = KITE_KEYS[i + 1];
-    if (t <= b[0]) { const k = smooth((t - a[0]) / (b[0] - a[0])); return { h: a[1] + (b[1] - a[1]) * k, d: a[2] + (b[2] - a[2]) * k }; }
+    if (t <= b[0]) { const k = EASE[b[3] || 's']((t - a[0]) / (b[0] - a[0])); return { h: a[1] + (b[1] - a[1]) * k, d: a[2] + (b[2] - a[2]) * k }; }
   }
   const l = KITE_KEYS[KITE_KEYS.length - 1]; return { h: l[1], d: l[2] };
 }
@@ -328,26 +338,50 @@ const P = {
   stand: { hip: [0, 0.74, 0.05], torso: 12, bpos: [0, 0.03, 0.16], yaw: 10, roll: -12, pole: [0, 0.2, 1], sheet: 0.5 },
   ride:  { hip: [0, 0.8, -0.12], torso: 22, bpos: [0, 0.03, 0.12], yaw: -4, roll: -18, pole: [0, 0.15, 1], sheet: 0.4 },
 };
-const POSE_KEYS = [[0, 'sit'], [3, 'sit'], [5.2, 'aim'], [6.4, 'aim'], [8, 'pull'], [9.4, 'rise'], [11, 'stand'], [12.5, 'ride'], [21, 'ride']];
+const POSE_KEYS = [[0, 'sit'], [3, 'sit'], [5.2, 'aim'], [6.7, 'aim'], [7.35, 'pull', 'out'], [8.0, 'rise'], [9.2, 'stand'], [11, 'ride'], [29, 'ride']];
+// Launch kick: the kite crossing the power zone yanks the rider out of the water (fast rise, slow decay)
+const LAUNCH = 6.85;
+const launchPulse = t => { const u = (t - LAUNCH) / 0.32; return u <= 0 ? 0 : u * Math.exp(1 - u); };
 const lerp = (a, b, k) => a + (b - a) * k;
 function poseAt(t) {
   let out;
   for (let i = 0; i < POSE_KEYS.length - 1; i++) {
-    const [ta, na] = POSE_KEYS[i], [tb, nb] = POSE_KEYS[i + 1];
+    const [ta, na] = POSE_KEYS[i], [tb, nb, eb] = POSE_KEYS[i + 1];
     if (t <= tb) {
-      const a = P[na], b = P[nb], k = smooth((t - ta) / (tb - ta));
+      const a = P[na], b = P[nb], k = EASE[eb || 's']((t - ta) / (tb - ta));
       out = {}; for (const key in a) out[key] = Array.isArray(a[key]) ? a[key].map((v, j) => lerp(v, b[key][j], k)) : lerp(a[key], b[key], k);
       break;
     }
   }
   if (!out) out = structuredClone(P.ride);
+  const L = launchPulse(t); // lunge toward the kite (+Z), up, and a bit along the travel direction (-X)
+  if (L > 0) {
+    out.hip[0] -= 0.18 * L; out.hip[1] += 0.4 * L; out.hip[2] += 0.45 * L;
+    out.bpos[0] -= 0.15 * L; out.bpos[1] += 0.08 * L; out.bpos[2] += 0.3 * L;
+    out.torso -= 22 * L; out.roll += 10 * L; out.sheet += 0.15 * L;
+  }
   if (t > SINE.t0) { // carve with the S: bear away on the dive, edge back up on the climb
     const { phi, ramp } = sinePhase(t), s = Math.cos(phi) * ramp;
     out.yaw += 10 * s; out.hip[1] -= 0.05 * s; out.torso -= 6 * s; out.roll += 6 * s;
   }
+  const uw = upwindAt(t), cw = cruiseUpAt(t); out.yaw -= (UPWIND - CRUISE_UP) * uw + 0.6 * CRUISE_UP * cw; out.roll -= 8 * uw + 3 * cw; out.torso += 5 * uw; // nose up, more edge, lean back
+  const lw = launchDownwindAt(t); out.yaw += 0.4 * LAUNCH_DOWNWIND * lw; out.roll += 6 * lw; // flatter board pointing downwind
   return out;
 }
-const speedAt = t => smooth((t - 8.3) / 3.2);
+// Heading up in the low-wind section: 0 = across the wind, 1 = fully pointed upwind (UPWIND degrees)
+const UPWIND = 20;
+const upwindAt = t => smooth((t - SINE.t0 - 0.2) / 2.8) * (1 - smooth((t - SINE.t0 - 4.6) / 1.4)); // back on course by the loop point
+// Launch: bear away hard to build speed, then head back up onto the course before Naviguer
+const LAUNCH_DOWNWIND = 40;
+// held for the first 3/4 of "Se lever", back on course when Naviguer starts
+const RISE = STEPS.find(s => s.name === 'Se lever'), HEAD_UP = RISE.t0 + 0.75 * (RISE.t1 - RISE.t0);
+const launchDownwindAt = t => EASE.out((t - LAUNCH - 0.15) / 0.7) * (1 - smooth((t - HEAD_UP) / (RISE.t1 - HEAD_UP)));
+// Travel heading in degrees: + = downwind of the beam reach, - = upwind
+// Cruising: edging ~10° upwind with the kite parked at 1h30 / 45°, so the rider slowly gains ground on the beach
+const CRUISE_UP = 10;
+const cruiseUpAt = t => smooth((t - HEAD_UP) / (RISE.t1 - HEAD_UP));
+const headingAt = t => LAUNCH_DOWNWIND * launchDownwindAt(t) - CRUISE_UP * cruiseUpAt(t) - (UPWIND - CRUISE_UP) * upwindAt(t);
+const speedAt = t => EASE.out((t - 7.0) / 2.6) + 0.35 * launchPulse(t - 0.35);
 const stepIndexAt = t => { for (let i = STEPS.length - 1; i >= 0; i--) if (t >= STEPS[i].t0) return i; return 0; };
 
 /* ---------------- Scene ---------------- */
@@ -358,26 +392,210 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0xffffff, 40, 140);
-const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 400);
+scene.fog = new THREE.Fog(0xffffff, 45, 650);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 2500);
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
 controls.maxPolarAngle = Math.PI * 0.495;
 controls.minDistance = 2; controls.maxDistance = 60;
 
-scene.add(new THREE.HemisphereLight(0xeaf6ff, 0x2a5a66, 1.1));
-const sun = new THREE.DirectionalLight(0xffffff, 1.6);
-sun.position.set(-6, 14, -8);
+scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x3a8a8a, 1.25));
+const sun = new THREE.DirectionalLight(0xfff4e0, 2.1);
+sun.position.set(-8, 9, -10);
 sun.castShadow = true;
 sun.shadow.mapSize.set(1024, 1024);
 Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4, near: 1, far: 40 });
 scene.add(sun);
 
+// Sky dome: blue gradient from the horizon up, with the sun disk + glow in the same direction as the light.
+// Follows the camera so it always reads as infinitely far; the scene stays in full daylight whatever the UI theme.
+const skyUniforms = { uTop: { value: new THREE.Color() }, uHorizon: { value: new THREE.Color() }, uSunDir: { value: sun.position.clone().normalize() } };
+const skyDome = new THREE.Mesh(new THREE.SphereGeometry(2000, 32, 16), new THREE.ShaderMaterial({
+  uniforms: skyUniforms, side: THREE.BackSide, depthWrite: false, fog: false,
+  vertexShader: `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `
+    uniform vec3 uTop, uHorizon, uSunDir; varying vec3 vDir;
+    void main(){
+      vec3 d = normalize(vDir);
+      vec3 col = mix(uHorizon, uTop, pow(clamp(d.y, 0.0, 1.0), 0.45));
+      float s = max(dot(d, uSunDir), 0.0);
+      col += vec3(1.0, 0.95, 0.82) * (smoothstep(0.9993, 0.9996, s) * 1.5 + pow(s, 60.0) * 0.45 + pow(s, 6.0) * 0.12);
+      gl_FragColor = vec4(col, 1.0);
+      #include <colorspace_fragment>
+    }`,
+}));
+skyDome.renderOrder = -2; skyDome.frustumCulled = false; scene.add(skyDome);
+
 // Water
+const BEACH_Z = 100;                // long sandy beach 100 m downwind of the start, facing the rider
 const waterGeo = new THREE.PlaneGeometry(220, 220, 90, 90); waterGeo.rotateX(-Math.PI / 2);
 const waterBase = Float32Array.from(waterGeo.attributes.position.array);
-const waterMat = new THREE.MeshStandardMaterial({ color: 0x2b7584, roughness: 0.35, metalness: 0.05, transparent: true, opacity: 0.82 });
-const water = new THREE.Mesh(waterGeo, waterMat); water.receiveShadow = true; scene.add(water);
+const waterMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3, metalness: 0.05, transparent: true, opacity: 0.86 });
+// Lagoon look: procedural depth patches (sand flats, turquoise, deep channels) + animated caustics
+const lagoonUniforms = {
+  uTime: { value: 0 }, uOffset: { value: new THREE.Vector2() }, uBeachZ: { value: BEACH_Z },
+  uShallow: { value: new THREE.Color() }, uDeep: { value: new THREE.Color() }, uSand: { value: new THREE.Color() }, uCaustic: { value: 1 },
+};
+waterMat.onBeforeCompile = sh => {
+  Object.assign(sh.uniforms, lagoonUniforms);
+  sh.vertexShader = 'varying vec3 vLagoonPos;\n' + sh.vertexShader.replace('#include <project_vertex>',
+    '#include <project_vertex>\nvLagoonPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+  sh.fragmentShader = `varying vec3 vLagoonPos;
+uniform float uTime, uCaustic, uBeachZ; uniform vec2 uOffset; uniform vec3 uShallow, uDeep, uSand;
+float lgHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float lgNoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(lgHash(i), lgHash(i + vec2(1, 0)), f.x), mix(lgHash(i + vec2(0, 1)), lgHash(i + vec2(1, 1)), f.x), f.y);
+}
+float lgFbm(vec2 p) { float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { v += a * lgNoise(p); p = p * 2.03 + 17.0; a *= 0.5; } return v; }
+float lgCaustic(vec2 uv, float t) {
+  vec2 p = mod(uv * 6.2831, 6.2831) - 250.0, i = p; float c = 1.0;
+  for (int n = 0; n < 4; n++) {
+    float tt = t * (1.0 - 3.5 / float(n + 1));
+    i = p + vec2(cos(tt - i.x) + sin(tt + i.y), sin(tt - i.y) + cos(tt + i.x));
+    c += 1.0 / length(vec2(p.x / (sin(i.x + tt) / 0.005), p.y / (cos(i.y + tt) / 0.005)));
+  }
+  c = 1.17 - pow(c / 4.0, 1.4);
+  return clamp(pow(abs(c), 8.0), 0.0, 1.0);
+}
+` + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+  vec2 lp = vLagoonPos.xz - uOffset;
+  float depth = lgFbm(lp * 0.03 + 3.0);                         // 0 deep .. 1 shallow
+  depth = max(depth, smoothstep(uBeachZ - 50.0, uBeachZ - 2.0, vLagoonPos.z));  // shelving up to the beach
+  float shallow = smoothstep(0.35, 0.62, depth);
+  vec3 col = mix(uDeep, uShallow, shallow);
+  float sandy = smoothstep(0.62, 0.82, depth + 0.06 * lgNoise(lp * 0.4));
+  col = mix(col, mix(uShallow, uSand, 0.3), sandy * 0.85);   // sand seen through ~1 m of water: tinted, soft-edged
+  float patches = smoothstep(0.6, 0.75, lgFbm(lp * 0.12 + 40.0)) * (1.0 - sandy) * shallow;  // coral heads / weed
+  col = mix(col, uDeep * 0.7, patches * 0.55);
+  float ca = lgCaustic(lp * 0.11, uTime * 0.45) + 0.6 * lgCaustic(lp * 0.07 + 0.3, uTime * 0.3 + 2.0);
+  col += uCaustic * ca * (0.12 + 0.3 * shallow) * vec3(0.85, 1.0, 0.97);
+  diffuseColor.rgb = col;`);
+};
+// Water is drawn before every other transparent object (wind window, foam, spray): its centre sits at the
+// origin like the window's, so depth sorting alone would sometimes paint the water over the window.
+const water = new THREE.Mesh(waterGeo, waterMat); water.receiveShadow = true; water.renderOrder = -1; scene.add(water);
+// Flat far water (ring around the animated patch) reaching out to the beach and the horizon
+{
+  const ring = new THREE.Shape([new THREE.Vector2(-1500, -1500), new THREE.Vector2(1500, -1500), new THREE.Vector2(1500, 1500), new THREE.Vector2(-1500, 1500)]);
+  ring.holes.push(new THREE.Path([new THREE.Vector2(-109, -109), new THREE.Vector2(-109, 109), new THREE.Vector2(109, 109), new THREE.Vector2(109, -109)]));
+  const g = new THREE.ShapeGeometry(ring); g.rotateX(-Math.PI / 2);
+  const farWater = new THREE.Mesh(g, waterMat); farWater.renderOrder = -1; scene.add(farWater);
+}
+
+// Beach: gentle shelf rising out of the water, then soft dunes; fine-grain colour noise, wet band at the shoreline
+const beachMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, vertexColors: true });
+// The shore scrolls with the rider, so all of it repeats every SHORE_P metres along X: the group can then be
+// wrapped by one period without any visible jump. Each item is placed once per period and copied SHORE_COPIES times.
+const SHORE_P = 600, SHORE_COPIES = 5, SK = 2 * Math.PI / SHORE_P;
+const shoreGroup = new THREE.Group(); scene.add(shoreGroup);
+const seeded = seed => () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+const copyX = k => (k - (SHORE_COPIES - 1) / 2) * SHORE_P;
+const shoreAt = x => Math.sin(x * SK) * 4 + Math.sin(x * SK * 2 + 0.7) * 1.5;    // waterline wiggles a little
+function beachHeight(x, z) {
+  const v = z - BEACH_Z - shoreAt(x);                                                 // metres from the waterline
+  let y = -0.05 + Math.min(Math.max(v, -8), 40) * 0.045;                              // beach slope ~2.5 %
+  const h = Math.sin(x * SK) * Math.sin(x * SK * 2 + 1.3) + 0.5 * Math.sin(x * SK * 4 + z * 0.05);
+  if (v > 45) y += (1 - Math.exp(-(v - 45) / 25)) * (3 + 1.8 * h);                   // dune ridge
+  return y;
+}
+{
+  const W = 3000, D = 160, g = new THREE.PlaneGeometry(W, D, 300, 64); g.rotateX(-Math.PI / 2);
+  const pos = g.attributes.position, col = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i) + BEACH_Z + D / 2 - 6, v = z - BEACH_Z - shoreAt(x);
+    pos.setXYZ(i, x, beachHeight(x, z), z);
+    const wet = 1 - Math.min(Math.max((v - 1) / 6, 0), 1), grain = 0.94 + Math.random() * 0.06;
+    const scrub = smooth((v - 52) / 18) * (0.7 + 0.3 * Math.random());              // dune top turns to scrubby ground
+    const k = grain * (1 - 0.32 * wet);
+    col[i * 3] = k * (1 - 0.42 * scrub); col[i * 3 + 1] = k * (1 - 0.02 * wet - 0.25 * scrub); col[i * 3 + 2] = k * (1 + 0.04 * wet - 0.6 * scrub);
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
+  shoreGroup.add(new THREE.Mesh(g, beachMat));
+}
+
+// Vegetation at the top of the beach: low-poly shrubs and bushes, 1.5 to 2 m tall, thicker behind the dune crest
+const scrubMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, flatShading: true });
+{
+  const g = new THREE.IcosahedronGeometry(1, 1), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) { const f = 0.82 + Math.random() * 0.3; p.setXYZ(i, p.getX(i) * f, p.getY(i) * f, p.getZ(i) * f); }
+  g.translate(0, 1, 0);                                       // base on the ground: unit height 2
+  g.computeVertexNormals();
+  const PER = 1050, bushes = new THREE.InstancedMesh(g, scrubMat, PER * SHORE_COPIES);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new V(), c = new THREE.Color();
+  for (let i = 0; i < PER; i++) {
+    const r = seeded(i * 7 + 1);
+    const x0 = (r() - 0.5) * SHORE_P;
+    const v = 50 + 95 * Math.pow(r(), 1.6);                   // first scattered shrubs at the crest, denser inland
+    const z = BEACH_Z + shoreAt(x0) + v;
+    const hgt = 1.5 + r() * 0.5, wid = hgt * (0.6 + r() * 0.9);
+    q.setFromAxisAngle(UP, r() * Math.PI * 2);
+    sc.set(wid, hgt / 2, wid * (0.7 + r() * 0.5));
+    const k = 0.7 + r() * 0.45; c.setRGB(k * (0.85 + r() * 0.3), k, k * (0.8 + r() * 0.3));  // tint around --scrub
+    for (let n = 0; n < SHORE_COPIES; n++) {
+      const x = x0 + copyX(n);
+      m.compose(new V(x, beachHeight(x, z) - 0.25, z), q, sc); bushes.setMatrixAt(i * SHORE_COPIES + n, m); bushes.setColorAt(i * SHORE_COPIES + n, c);
+    }
+  }
+  shoreGroup.add(bushes);
+}
+
+// Trees above the shrubs: coconut palms (9-15 m, leaning trunks, drooping fronds) near the crest,
+// and a few round-crowned trees further inland
+{
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  // one palm crown: 11 arched fronds built as tapered, slightly folded strips
+  const crownPos = [];
+  for (let f = 0; f < 11; f++) {
+    const yaw = f / 11 * Math.PI * 2 + rnd(-0.2, 0.2), L = rnd(3.2, 4.2), droop = rnd(1.3, 2.0), cy = Math.cos(yaw), sy = Math.sin(yaw);
+    const pt = (s, side) => {
+      const w = (0.75 * Math.sin(Math.PI * Math.min(1, s * 1.15)) + 0.05) * side, x = s * L;
+      const y = 0.9 * s - droop * s * s - Math.abs(w) * 0.35;           // arch up, then droop; edges fold down
+      return [x * cy - w * sy, y, x * sy + w * cy];
+    };
+    for (let k = 0; k < 7; k++) {
+      const a = k / 7, b = (k + 1) / 7, p0 = pt(a, -1), p1 = pt(a, 1), p2 = pt(b, -1), p3 = pt(b, 1);
+      crownPos.push(...p0, ...p2, ...p1, ...p1, ...p2, ...p3);
+    }
+  }
+  const crownGeo = new THREE.BufferGeometry(); crownGeo.setAttribute('position', new THREE.Float32BufferAttribute(crownPos, 3)); crownGeo.computeVertexNormals();
+  const trunkGeo = new THREE.CylinderGeometry(0.13, 0.22, 1, 7, 1).translate(0, 0.5, 0);
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8c7b63, roughness: 0.95, flatShading: true });
+  const frondMat = new THREE.MeshStandardMaterial({ color: 0x5b8a34, roughness: 0.8, side: THREE.DoubleSide, flatShading: true });
+  const leafyMat = new THREE.MeshStandardMaterial({ color: 0x3f6b2c, roughness: 0.9, flatShading: true });
+  const blobGeo = new THREE.IcosahedronGeometry(1, 1);
+  { const p = blobGeo.attributes.position; for (let i = 0; i < p.count; i++) { const f = rnd(0.85, 1.12); p.setXYZ(i, p.getX(i) * f, p.getY(i) * f, p.getZ(i) * f); } blobGeo.computeVertexNormals(); }
+
+  const NP = 65, NL = 35, C = SHORE_COPIES;                  // per period
+  const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, (NP + NL) * C), crowns = new THREE.InstancedMesh(crownGeo, frondMat, NP * C), blobs = new THREE.InstancedMesh(blobGeo, leafyMat, NL * C);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), qy = new THREE.Quaternion(), sc = new V(), c = new THREE.Color();
+  for (let i = 0; i < NP + NL; i++) {
+    const r = seeded(i * 13 + 5000), rr = (a, b) => a + r() * (b - a);
+    const palm = i < NP, x0 = (r() - 0.5) * SHORE_P;
+    const v = palm ? 54 + 50 * Math.pow(r(), 1.5) : 75 + 75 * r();
+    const z = BEACH_Z + shoreAt(x0) + v;
+    const h = palm ? rr(9, 15) : rr(3, 5);                                  // trunk height
+    const lean = palm ? rr(0.05, 0.3) : rr(0, 0.06), leanDir = rr(0, Math.PI * 2);
+    q.setFromAxisAngle(new V(Math.cos(leanDir), 0, Math.sin(leanDir)), lean);
+    const rad = palm ? rr(0.9, 1.2) : rr(1.3, 1.7), k = rr(0.8, 1.15);
+    const cs = rr(1.3, 1.7), w = rr(2.6, 3.6), wy = rr(0.7, 0.95), wz = rr(0.85, 1.1), cr = rr(0.85, 1.1), cb = rr(0.8, 1.05);
+    qy.setFromAxisAngle(UP, rr(0, Math.PI * 2));
+    for (let n = 0; n < C; n++) {
+      const x = x0 + copyX(n), base = new V(x, beachHeight(x, z) - 0.2, z);
+      sc.set(rad, h, rad); m.compose(base, q, sc); trunks.setMatrixAt(i * C + n, m);
+      const top = new V(0, h, 0).applyQuaternion(q).add(base);
+      if (palm) {
+        sc.setScalar(cs); m.compose(top, qy, sc); crowns.setMatrixAt(i * C + n, m);
+        c.setRGB(k * cr, k, k * cb); crowns.setColorAt(i * C + n, c);
+      } else {
+        top.y += w * 0.45;                                                  // crown sits on the trunk, total 7-10 m
+        sc.set(w, w * wy, w * wz); m.compose(top, qy, sc); blobs.setMatrixAt((i - NP) * C + n, m);
+        c.setRGB(k * cr, k, k * cb * 0.95); blobs.setColorAt((i - NP) * C + n, c);
+      }
+    }
+  }
+  shoreGroup.add(trunks, crowns, blobs);
+}
 
 // Mirror-able rig: everything that depends on travel direction
 const rig = new THREE.Group(); scene.add(rig);
@@ -388,13 +606,27 @@ const foam = new THREE.InstancedMesh(new THREE.CircleGeometry(0.5, 10).rotateX(-
 const foamData = [...Array(FOAM)].map(() => ({ x: (Math.random() - 0.5) * 80, z: (Math.random() - 0.5) * 60, s: 0.3 + Math.random() * 0.9, r: Math.random() * 3 }));
 rig.add(foam);
 
+// Spray: a burst when the kite rips the rider out of the water, then a tail-spray proportional to speed.
+// Positions are a pure function of t, so scrubbing and pausing freeze it consistently.
+const SPRAY_BURST = 140, SPRAY_TAIL = 90, SPRAY = SPRAY_BURST + SPRAY_TAIL;
+const spray = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.04, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, depthWrite: false }), SPRAY);
+spray.frustumCulled = false;
+const sprayData = [...Array(SPRAY)].map((_, i) => {
+  const r = () => Math.random();
+  return i < SPRAY_BURST
+    ? { t0: LAUNCH + 0.1 + r() * 0.55, life: 0.7 + r() * 0.6, o: [-0.3 + r() * 1.0, 0, -0.2 - r() * 0.25], v: [1 + r() * 4.5, 1.8 + r() * 3.4, -0.5 - r() * 3], s: 0.5 + r() * 1.3 }
+    : { ph: r(), life: 0.45 + r() * 0.35, o: [0.55 + r() * 0.2, 0, (r() - 0.5) * 0.3], v: [1.2 + r() * 2.2, 0.8 + r() * 1.6, (r() - 0.2) * 1.6], s: 0.4 + r() * 0.9 };
+});
+rig.add(spray);
+
 // Wind streaks
-const WN = 260;
-const windPos = new Float32Array(WN * 6);
-const windData = [...Array(WN)].map(() => ({ x: (Math.random() - 0.5) * 50, y: 0.5 + Math.random() * 20, z: -22 + Math.random() * 52, l: 0.8 + Math.random() * 1.2 }));
-const windGeo = new THREE.BufferGeometry(); windGeo.setAttribute('position', new THREE.BufferAttribute(windPos, 3));
-const windMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 });
-scene.add(new THREE.LineSegments(windGeo, windMat));
+// Thin tubes rather than GL lines: lines are always 1 px wide and vanish against the sky
+const WN = 300;
+const WIND_SPEED = 20 * 0.5144;   // 20 knots, in m/s
+const windData = [...Array(WN)].map(() => ({ x: (Math.random() - 0.5) * 50, y: 0.5 + Math.random() * 20, z: -22 + Math.random() * 52, l: 1.4 + Math.random() * 1.8 }));
+const windTube = new THREE.CylinderGeometry(0.022, 0.022, 1, 5, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5); // unit length along +Z
+const windMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false });
+const windMesh = new THREE.InstancedMesh(windTube, windMat, WN); windMesh.frustumCulled = false; scene.add(windMesh);
 
 // Wind window (quarter sphere downwind)
 const winGroup = new THREE.Group(); winGroup.position.copy(ANCHOR); scene.add(winGroup);
@@ -440,7 +672,6 @@ const clockLabels = [];
 });
 const zoneLabels = [
   [makeLabel('ZONE DE PUISSANCE', { bg: 'rgba(160,40,25,0.85)', scale: 1.4 }), kiteDir(0, 70).multiplyScalar(R * 0.98).add(new V(0, -3, 0))],
-  [makeLabel('BORD DE FENÊTRE', { bg: 'rgba(25,110,80,0.85)', scale: 1.2 }), kiteDir(-2.4, 4).multiplyScalar(R)],
 ];
 zoneLabels.forEach(([s, p]) => { s.position.copy(p); winGroup.add(s); });
 
@@ -724,6 +955,7 @@ function renderStep(i) {
 }
 
 /* ---------------- Controls ---------------- */
+const LOOP_FROM = STEPS.find(s => s.name === 'Naviguer').t0;
 let t = 0, playing = !reduceMotion, speed = 1, scrubbing = false, loopStep = false;
 const scrub = document.getElementById('scrub'), playIcon = document.getElementById('playIcon');
 function setPlaying(v) { playing = v; playIcon.innerHTML = v ? '<path d="M3 2h4v12H3zM9 2h4v12H9z"/>' : '<path d="M4 2l10 6-10 6z"/>'; }
@@ -774,7 +1006,8 @@ setCam('dos', true);
 function readTheme() {
   const cs = getComputedStyle(document.documentElement), g = n => new THREE.Color(cs.getPropertyValue(n).trim() || '#888');
   const sky = g('--sky'); scene.background = sky; scene.fog.color = sky;
-  waterMat.color = g('--sea');
+  skyUniforms.uHorizon.value = sky; skyUniforms.uTop.value = g('--sky-top');
+  lagoonUniforms.uShallow.value = g('--sea-shallow'); lagoonUniforms.uDeep.value = g('--sea-deep'); lagoonUniforms.uSand.value = g('--sand'); beachMat.color = g('--beach'); scrubMat.color = g('--scrub');
   windMat.color = g('--wind');
   winUniforms.uPow.value = g('--power'); winUniforms.uMid.value = g('--mid'); winUniforms.uEdge.value = g('--edge');
   edgeLine.material.color = g('--edge');
@@ -794,14 +1027,14 @@ function resize() {
 new ResizeObserver(resize).observe(stage); resize();
 
 const clock = new THREE.Clock();
-let wallT = 0, foamOffset = 0;
-const m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), s4 = new V();
+let wallT = 0, foamOffset = 0, foamOffsetZ = 0;
+const m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), qWind = new THREE.Quaternion(), s4 = new V();
 function tick() {
   const dt = Math.min(clock.getDelta(), 0.05); wallT += dt;
   if (playing && !scrubbing) {
     t += dt * speed;
     if (loopStep && curStep >= 0 && t >= STEPS[curStep].t1) { t = STEPS[curStep].t0; trailPts = []; }
-    if (t >= TOTAL) { t = 0; trailPts = []; }
+    if (t >= TOTAL) { t = LOOP_FROM; trailPts = []; } // after the first run, keep looping Naviguer + Vent faible
   }
   const si = stepIndexAt(t);
   if (si !== curStep) { curStep = si; renderStep(si); }
@@ -812,33 +1045,58 @@ function tick() {
 
   // water + foam move with board speed (rider travels toward -X in rig space)
   const v = speedAt(t) * 7;
-  foamOffset += v * dt;
+  const hd = headingAt(t) * D2R, vx = v * Math.cos(hd), vz = v * Math.sin(hd); // heading upwind: water flows back and downwind
+  foamOffset += vx * dt; foamOffsetZ += vz * dt;
+  if (t < LAUNCH) foamOffsetZ = 0;                       // still in the water: the beach is back at its starting distance
+  { const ox = foamOffset * (mirrored ? -1 : 1); shoreGroup.position.set(ox - Math.round(ox / SHORE_P) * SHORE_P, 0, -foamOffsetZ); }
+  lagoonUniforms.uBeachZ.value = BEACH_Z - foamOffsetZ;
+  lagoonUniforms.uTime.value = wallT; lagoonUniforms.uOffset.value.set(foamOffset * (mirrored ? -1 : 1), -foamOffsetZ);
   const wp = waterGeo.attributes.position.array, dirSign = mirrored ? -1 : 1;
   for (let i = 0; i < wp.length; i += 3) {
-    const x = waterBase[i] + foamOffset * dirSign, z = waterBase[i + 2];
-    wp[i + 1] = 0.07 * Math.sin(x * 0.45 + wallT * 1.2) + 0.05 * Math.sin(z * 0.62 - wallT * 1.6 + x * 0.2);
+    const x = waterBase[i] - foamOffset * dirSign, z = waterBase[i + 2] + foamOffsetZ;
+    // wind chop: crests across the wind (along X), travelling downwind (+Z); two smaller trains ±25° break the regularity
+    wp[i + 1] = 0.08 * Math.sin(z * 0.6 - wallT * 2.4) + 0.04 * Math.sin(z * 0.9 + x * 0.42 - wallT * 3.1) + 0.03 * Math.sin(z * 0.75 - x * 0.35 - wallT * 2.7 + 1.7);
   }
   waterGeo.attributes.position.needsUpdate = true; waterGeo.computeVertexNormals();
   foamData.forEach((f, i) => {
-    f.x += v * dt * f.s; f.z += 0.4 * dt;
-    if (f.x > 40) f.x -= 80; if (f.z > 30) f.z -= 60;
+    f.x += vx * dt * f.s; f.z += (1.5 - vz * f.s) * dt;   // whitecaps drift downwind with the chop
+    if (f.x > 40) f.x -= 80; if (f.z > 30) f.z -= 60; if (f.z < -30) f.z += 60;
     const near = Math.abs(f.x) < 1.2 && Math.abs(f.z) < 1.2;
-    s4.set(f.s * (1 + v * 0.25), 1, f.s * 0.35);
+    s4.set(f.s * 1.6, 1, f.s * 0.3);   // whitecaps lie along the crests, across the wind
     m4.compose(new V(f.x, near ? -1 : 0.06, f.z), q4, s4); foam.setMatrixAt(i, m4);
   });
   foam.instanceMatrix.needsUpdate = true;
+  const sv = speedAt(t), bp = board.position;
+  sprayData.forEach((p, i) => {
+    let tau, k = 1;
+    if (i < SPRAY_BURST) tau = t - p.t0;
+    else { tau = ((t / p.life + p.ph) % 1) * p.life; k = Math.max(0, sv - 0.15); }
+    const y = p.o[1] + p.v[1] * tau - 4.9 * tau * tau;
+    if (tau < 0 || tau > p.life || y < -0.05 || k <= 0) { s4.setScalar(0); m4.compose(bp, q4, s4); spray.setMatrixAt(i, m4); return; }
+    const sz = p.s * (1 - tau / p.life * 0.6) * (i < SPRAY_BURST ? 1 : k);
+    s4.setScalar(sz);
+    m4.compose(new V(bp.x + p.o[0] + p.v[0] * tau * (i < SPRAY_BURST ? 1 : 0.5 + sv), y, bp.z + p.o[2] + p.v[2] * tau), q4, s4);
+    spray.setMatrixAt(i, m4);
+  });
+  spray.instanceMatrix.needsUpdate = true;
+  // apparent wind seen by the rider: true wind (+Z) minus the rider's own velocity
+  const awx = vx * dirSign, awz = WIND_SPEED - vz, aw = Math.hypot(awx, awz), awLen = aw / WIND_SPEED;
+  qWind.setFromAxisAngle(UP, Math.atan2(awx, awz));
   for (let i = 0; i < WN; i++) {
-    const w = windData[i]; w.z += dt * 9; if (w.z > 30) { w.z -= 52; w.x = (Math.random() - 0.5) * 50; }
-    windPos.set([w.x, w.y, w.z, w.x, w.y, w.z + w.l], i * 6);
+    const w = windData[i];
+    w.x += awx * dt; w.z += awz * dt;
+    if (w.z > 30) { w.z -= 52; w.x = (Math.random() - 0.5) * 50; }
+    if (w.x > 25) w.x -= 50; else if (w.x < -25) w.x += 50;
+    s4.set(1, 1, w.l * awLen); m4.compose(new V(w.x, w.y, w.z), qWind, s4); windMesh.setMatrixAt(i, m4);
   }
-  windGeo.attributes.position.needsUpdate = true;
+  windMesh.instanceMatrix.needsUpdate = true;
 
   if (camTween) {
     camTween.k = Math.min(1, camTween.k + dt / 0.9); const e = smooth(camTween.k);
     camera.position.lerpVectors(camTween.from, camTween.pos, e); controls.target.lerpVectors(camTween.fromT, camTween.target, e);
     if (camTween.k >= 1) camTween = null;
   }
-  controls.update();
+  controls.update(); skyDome.position.copy(camera.position);
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
 }
